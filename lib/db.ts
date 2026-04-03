@@ -4,15 +4,18 @@ import {
   createDemoCampaign,
   createDemoDraft,
   createDemoLog,
+  createDemoManagedMedia,
   createDemoMedia,
   getAllDemoLogs,
   getDemoCampaignById,
   getDemoCampaigns,
   getDemoDrafts,
   getDemoLogs,
+  getDemoManagedMedia,
   getDemoMedia,
   getDemoMediaById,
   updateDemoLog,
+  updateDemoManagedMedia,
   updateDemoMediaContact,
   updateDemoMediaStatus,
 } from '@/lib/demo-store'
@@ -20,6 +23,8 @@ import type {
   ApprovalStatus,
   Campaign,
   DeliveryStatus,
+  ManagedMedia,
+  ManagedMediaStatus,
   MediaCandidate,
   MediaStatus,
   OutreachDraft,
@@ -79,6 +84,27 @@ type NullableLogRow = {
   memo: string | null
 }
 
+type NullableManagedMediaRow = {
+  id: string
+  source_media_candidate_id: string | null
+  campaign_id: string | null
+  media_name: string | null
+  domain: string | null
+  url: string | null
+  product_name: string | null
+  placement_type: string | null
+  contract_status: ManagedMediaStatus | null
+  start_date: string | null
+  end_date: string | null
+  unit_price: string | null
+  reward_rule: string | null
+  owner_name: string | null
+  monthly_volume: string | null
+  memo: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type CreateCampaignInput = Pick<
   Campaign,
   | 'campaign_name'
@@ -134,6 +160,24 @@ export type UpdateOutreachLogInput = {
   next_action?: string
   memo?: string
 }
+
+export type CreateManagedMediaInput = Omit<ManagedMedia, 'id' | 'created_at' | 'updated_at'>
+
+export type UpdateManagedMediaInput = Partial<
+  Pick<
+    ManagedMedia,
+    | 'product_name'
+    | 'placement_type'
+    | 'contract_status'
+    | 'start_date'
+    | 'end_date'
+    | 'unit_price'
+    | 'reward_rule'
+    | 'owner_name'
+    | 'monthly_volume'
+    | 'memo'
+  >
+>
 
 function normalizeCampaign(campaign: Campaign): Campaign {
   return {
@@ -199,6 +243,29 @@ function normalizeLog(log: NullableLogRow): OutreachLog {
     reply_received_at: log.reply_received_at ?? '',
     next_action: log.next_action ?? '',
     memo: log.memo ?? '',
+  }
+}
+
+function normalizeManagedMedia(media: NullableManagedMediaRow): ManagedMedia {
+  return {
+    id: media.id,
+    source_media_candidate_id: media.source_media_candidate_id ?? '',
+    campaign_id: media.campaign_id ?? '',
+    media_name: media.media_name ?? '名称未設定',
+    domain: media.domain ?? '',
+    url: media.url ?? '',
+    product_name: media.product_name ?? '',
+    placement_type: media.placement_type ?? '',
+    contract_status: media.contract_status ?? 'negotiating',
+    start_date: media.start_date ?? '',
+    end_date: media.end_date ?? '',
+    unit_price: media.unit_price ?? '',
+    reward_rule: media.reward_rule ?? '',
+    owner_name: media.owner_name ?? '',
+    monthly_volume: media.monthly_volume ?? '',
+    memo: media.memo ?? '',
+    created_at: media.created_at,
+    updated_at: media.updated_at,
   }
 }
 
@@ -504,4 +571,81 @@ export async function updateOutreachLog(id: string, input: UpdateOutreachLogInpu
   if (error) throw error
 
   return normalizeLog(data as NullableLogRow)
+}
+
+export async function getManagedMedia(campaignId?: string) {
+  if (!hasSupabaseEnv()) {
+    return getDemoManagedMedia(campaignId)
+  }
+
+  const supabase = createSupabaseClient()
+  let query = supabase.from('managed_media').select('*').order('updated_at', { ascending: false })
+
+  if (campaignId) {
+    query = query.eq('campaign_id', campaignId)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+
+  return (data ?? []).map((media) => normalizeManagedMedia(media as NullableManagedMediaRow))
+}
+
+export async function createManagedMedia(input: CreateManagedMediaInput) {
+  if (!hasSupabaseEnv()) {
+    return createDemoManagedMedia(input)
+  }
+
+  const supabase = createSupabaseClient()
+  const { data, error } = await supabase
+    .from('managed_media')
+    .insert({
+      source_media_candidate_id: input.source_media_candidate_id || null,
+      campaign_id: input.campaign_id || null,
+      media_name: input.media_name,
+      domain: input.domain,
+      url: input.url,
+      product_name: input.product_name,
+      placement_type: input.placement_type,
+      contract_status: input.contract_status,
+      start_date: input.start_date || null,
+      end_date: input.end_date || null,
+      unit_price: input.unit_price,
+      reward_rule: input.reward_rule,
+      owner_name: input.owner_name,
+      monthly_volume: input.monthly_volume,
+      memo: input.memo,
+    })
+    .select('*')
+    .single()
+
+  if (error) throw error
+
+  return normalizeManagedMedia(data as NullableManagedMediaRow)
+}
+
+export async function updateManagedMedia(id: string, input: UpdateManagedMediaInput) {
+  if (!hasSupabaseEnv()) {
+    const media = updateDemoManagedMedia(id, input)
+    if (!media) {
+      throw new Error('Managed media not found')
+    }
+    return media
+  }
+
+  const supabase = createSupabaseClient()
+  const { data, error } = await supabase
+    .from('managed_media')
+    .update({
+      ...input,
+      start_date: input.start_date === undefined ? undefined : input.start_date || null,
+      end_date: input.end_date === undefined ? undefined : input.end_date || null,
+    })
+    .eq('id', id)
+    .select('*')
+    .single()
+
+  if (error) throw error
+
+  return normalizeManagedMedia(data as NullableManagedMediaRow)
 }

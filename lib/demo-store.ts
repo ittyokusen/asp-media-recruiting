@@ -1,5 +1,6 @@
 import {
   mockCampaigns,
+  mockManagedMedia,
   mockMediaCandidates,
   mockOutreachDrafts,
   mockOutreachLogs,
@@ -7,6 +8,8 @@ import {
 import type {
   Campaign,
   DeliveryStatus,
+  ManagedMedia,
+  ManagedMediaStatus,
   MediaCandidate,
   MediaStatus,
   OutreachDraft,
@@ -16,6 +19,7 @@ import type {
 
 let campaignsStore: Campaign[] = structuredClone(mockCampaigns)
 let mediaStore: MediaCandidate[] = structuredClone(mockMediaCandidates)
+let managedMediaStore: ManagedMedia[] = structuredClone(mockManagedMedia)
 let draftsStore: OutreachDraft[] = structuredClone(mockOutreachDrafts)
 let logsStore: OutreachLog[] = structuredClone(mockOutreachLogs)
 
@@ -163,6 +167,62 @@ export function getAllDemoLogs() {
   return [...logsStore].sort((a, b) => b.sent_at.localeCompare(a.sent_at))
 }
 
+export function getDemoManagedMedia(campaignId?: string) {
+  const list = campaignId
+    ? managedMediaStore.filter((media) => media.campaign_id === campaignId)
+    : managedMediaStore
+
+  return [...list].sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+}
+
+export function createDemoManagedMedia(
+  input: Omit<ManagedMedia, 'id' | 'created_at' | 'updated_at'>
+) {
+  const media: ManagedMedia = {
+    id: makeId('managed'),
+    created_at: nowIso(),
+    updated_at: nowIso(),
+    ...input,
+  }
+  managedMediaStore = [media, ...managedMediaStore]
+  return media
+}
+
+export function updateDemoManagedMedia(
+  id: string,
+  input: Partial<
+    Pick<
+      ManagedMedia,
+      | 'product_name'
+      | 'placement_type'
+      | 'contract_status'
+      | 'start_date'
+      | 'end_date'
+      | 'unit_price'
+      | 'reward_rule'
+      | 'owner_name'
+      | 'monthly_volume'
+      | 'memo'
+    >
+  > & {
+    contract_status?: ManagedMediaStatus
+  }
+) {
+  let updated: ManagedMedia | null = null
+
+  managedMediaStore = managedMediaStore.map((media) => {
+    if (media.id !== id) return media
+    updated = {
+      ...media,
+      ...input,
+      updated_at: nowIso(),
+    }
+    return updated
+  })
+
+  return updated
+}
+
 export function createDemoLog(input: {
   media_candidate_id: string
   draft_id?: string
@@ -220,6 +280,7 @@ export function updateDemoLog(
 export function resetDemoStore() {
   campaignsStore = structuredClone(mockCampaigns)
   mediaStore = structuredClone(mockMediaCandidates)
+  managedMediaStore = structuredClone(mockManagedMedia)
   draftsStore = structuredClone(mockOutreachDrafts)
   logsStore = structuredClone(mockOutreachLogs)
 }

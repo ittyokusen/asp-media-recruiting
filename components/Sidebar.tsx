@@ -12,15 +12,17 @@ import {
   Mail,
   Search,
   Sparkles,
+  Store,
 } from 'lucide-react'
 
 import type { AuthUser } from '@/lib/auth'
 import { cn } from '@/lib/utils'
-import type { Campaign, MediaCandidate } from '@/types'
+import type { Campaign, ManagedMedia, MediaCandidate } from '@/types'
 
 const navItems = [
   { href: '/campaigns', label: '案件管理', icon: BriefcaseBusiness },
   { href: '/media', label: 'メディア候補', icon: Search },
+  { href: '/managed-media', label: 'メディア管理', icon: Store },
   { href: '/outreach', label: '連絡管理', icon: Mail },
 ]
 
@@ -29,6 +31,7 @@ export default function Sidebar({ currentUser }: { currentUser: AuthUser | null 
   const router = useRouter()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [mediaCandidates, setMediaCandidates] = useState<MediaCandidate[]>([])
+  const [managedMedia, setManagedMedia] = useState<ManagedMedia[]>([])
   const [loading, setLoading] = useState(true)
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -37,28 +40,32 @@ export default function Sidebar({ currentUser }: { currentUser: AuthUser | null 
 
     const loadStats = async () => {
       try {
-        const [campaignsRes, mediaRes] = await Promise.all([
+        const [campaignsRes, mediaRes, managedMediaRes] = await Promise.all([
           fetch('/api/campaigns', { cache: 'no-store' }),
           fetch('/api/media', { cache: 'no-store' }),
+          fetch('/api/managed-media', { cache: 'no-store' }),
         ])
 
-        if (!campaignsRes.ok || !mediaRes.ok) {
+        if (!campaignsRes.ok || !mediaRes.ok || !managedMediaRes.ok) {
           throw new Error('Failed to load sidebar stats')
         }
 
-        const [campaignsData, mediaData] = await Promise.all([
+        const [campaignsData, mediaData, managedMediaData] = await Promise.all([
           campaignsRes.json() as Promise<Campaign[]>,
           mediaRes.json() as Promise<MediaCandidate[]>,
+          managedMediaRes.json() as Promise<ManagedMedia[]>,
         ])
 
         if (!cancelled) {
           setCampaigns(campaignsData)
           setMediaCandidates(mediaData)
+          setManagedMedia(managedMediaData)
         }
       } catch {
         if (!cancelled) {
           setCampaigns([])
           setMediaCandidates([])
+          setManagedMedia([])
         }
       } finally {
         if (!cancelled) {
@@ -82,6 +89,10 @@ export default function Sidebar({ currentUser }: { currentUser: AuthUser | null 
     {
       label: '候補メディア',
       value: loading ? '...' : `${mediaCandidates.length}件`,
+    },
+    {
+      label: '稼働メディア',
+      value: loading ? '...' : `${managedMedia.length}件`,
     },
   ]
 
@@ -167,7 +178,9 @@ export default function Sidebar({ currentUser }: { currentUser: AuthUser | null 
                         ? '案件の訴求・配信条件を整理'
                         : item.href === '/media'
                           ? '候補メディアを比較・絞り込み'
-                          : '送信待ち・返信状況を追跡'}
+                          : item.href === '/managed-media'
+                            ? '成約後の媒体・商材・単価を管理'
+                            : '送信待ち・返信状況を追跡'}
                     </p>
                   </div>
                   <ChevronRight

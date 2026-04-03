@@ -81,3 +81,27 @@ export interface OutreachLog {
   next_action: string
   memo: string
 }
+
+// ===== 確定メディア管理 =====
+export type ManagedMediaStatus = 'negotiating' | 'active' | 'paused' | 'completed'
+
+export interface ManagedMedia {
+  id: string
+  source_media_candidate_id: string
+  campaign_id: string
+  media_name: string
+  domain: string
+  url: string
+  product_name: string
+  placement_type: string
+  contract_status: ManagedMediaStatus
+  start_date: string
+  end_date: string
+  unit_price: string
+  reward_rule: string
+  owner_name: string
+  monthly_volume: string
+  memo: string
+  created_at: string
+  updated_at: string
+}

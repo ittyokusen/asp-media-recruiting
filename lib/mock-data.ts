@@ -1,4 +1,10 @@
-import type { Campaign, MediaCandidate, OutreachDraft, OutreachLog } from '@/types'
+import type {
+  Campaign,
+  ManagedMedia,
+  MediaCandidate,
+  OutreachDraft,
+  OutreachLog,
+} from '@/types'
 
 export const mockCampaigns: Campaign[] = [
   {
@@ -495,5 +501,48 @@ export const mockOutreachLogs: OutreachLog[] = [
     reply_received_at: '',
     next_action: '問い合わせフォームから再送',
     memo: 'メールがバウンスしたため再アプローチ対象',
+  },
+]
+
+export const mockManagedMedia: ManagedMedia[] = [
+  {
+    id: 'managed_001',
+    source_media_candidate_id: 'media_009',
+    campaign_id: 'camp_004',
+    media_name: '腸活デイズ',
+    domain: 'chokatsu-days.jp',
+    url: 'https://chokatsu-days.jp',
+    product_name: 'ラクトフィットPro',
+    placement_type: '比較記事タイアップ + レシピ記事内CTA',
+    contract_status: 'active',
+    start_date: '2026-04-01',
+    end_date: '2026-06-30',
+    unit_price: 'CPA 4,800円',
+    reward_rule: '初回購入成果で承認、月末締め翌月末支払い',
+    owner_name: 'admin@demo.local',
+    monthly_volume: '月間想定 120 CV / 35万PV',
+    memo: 'レシピ面の回遊が強いため、朝食導線の記事から優先的に露出を増やす。',
+    created_at: '2026-04-01T00:00:00Z',
+    updated_at: '2026-04-03T00:00:00Z',
+  },
+  {
+    id: 'managed_002',
+    source_media_candidate_id: 'media_007',
+    campaign_id: 'camp_003',
+    media_name: 'コスメジャーナル',
+    domain: 'cosme-journal.jp',
+    url: 'https://cosme-journal.jp',
+    product_name: 'ブライトヴェールUV',
+    placement_type: '新商品レビュー記事 + SNS二次投稿',
+    contract_status: 'negotiating',
+    start_date: '2026-04-15',
+    end_date: '2026-05-31',
+    unit_price: '固定 180,000円 + 成果報酬 8%',
+    reward_rule: '記事公開後に固定費請求、成果分はASP確定基準に合わせて月次精算',
+    owner_name: 'admin@demo.local',
+    monthly_volume: '初月 60 CV 見込み',
+    memo: '敏感肌レビュー枠で掲載予定。薬機表現チェック済み素材を先方へ送付済み。',
+    created_at: '2026-04-02T00:00:00Z',
+    updated_at: '2026-04-03T00:00:00Z',
   },
 ]
