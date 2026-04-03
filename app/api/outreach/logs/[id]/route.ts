@@ -39,6 +39,8 @@ export async function PATCH(
     if (
       body?.delivery_status === undefined &&
       body?.reply_status === undefined &&
+      body?.reply_body === undefined &&
+      body?.reply_received_at === undefined &&
       body?.next_action === undefined &&
       body?.memo === undefined
     ) {
@@ -48,6 +50,8 @@ export async function PATCH(
     const log = await updateOutreachLog(id, {
       delivery_status: body.delivery_status,
       reply_status: body.reply_status,
+      reply_body: body.reply_body,
+      reply_received_at: body.reply_received_at,
       next_action: body.next_action,
       memo: body.memo,
     })

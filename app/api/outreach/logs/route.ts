@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { requireWriteUser } from '@/lib/auth'
-import { createOutreachLog, updateMediaStatus } from '@/lib/db'
+import { createOutreachLog, updateMediaContact, updateMediaStatus } from '@/lib/db'
 import type { MediaStatus } from '@/types'
 
 function resolveMediaStatusFromSend(deliveryStatus?: string): MediaStatus {
@@ -31,6 +31,10 @@ export async function POST(request: NextRequest) {
       reply_status: body.reply_status ?? 'none',
       next_action: body.next_action ?? '3営業日以内に初回返信を確認',
       memo: body.memo ?? '',
+    })
+
+    await updateMediaContact(body.media_candidate_id, {
+      assigned_owner: sentBy,
     })
 
     const media = await updateMediaStatus(

@@ -13,6 +13,7 @@ import {
   getDemoMedia,
   getDemoMediaById,
   updateDemoLog,
+  updateDemoMediaContact,
   updateDemoMediaStatus,
 } from '@/lib/demo-store'
 import type {
@@ -38,6 +39,9 @@ type NullableMediaRow = {
   operator_type: string | null
   contact_page_url: string | null
   contact_email: string | null
+  contact_slack_id: string | null
+  contact_chatwork_id: string | null
+  assigned_owner: string | null
   social_links: string[] | null
   summary: string | null
   fit_score: number | null
@@ -69,6 +73,8 @@ type NullableLogRow = {
   sent_at: string
   delivery_status: OutreachLog['delivery_status'] | null
   reply_status: OutreachLog['reply_status'] | null
+  reply_body: string | null
+  reply_received_at: string | null
   next_action: string | null
   memo: string | null
 }
@@ -87,6 +93,18 @@ export type CreateMediaInput = Omit<MediaCandidate, 'id' | 'created_at' | 'updat
   raw_html?: string
 }
 
+export type UpdateMediaContactInput = Partial<
+  Pick<
+    MediaCandidate,
+    | 'operator_name'
+    | 'contact_email'
+    | 'contact_page_url'
+    | 'contact_slack_id'
+    | 'contact_chatwork_id'
+    | 'assigned_owner'
+  >
+>
+
 export type CreateDraftInput = Pick<
   OutreachDraft,
   'subject' | 'body' | 'tone' | 'personalization_points'
@@ -102,6 +120,8 @@ export type CreateOutreachLogInput = {
   sent_at?: string
   delivery_status?: DeliveryStatus
   reply_status?: ReplyStatus
+  reply_body?: string
+  reply_received_at?: string
   next_action?: string
   memo?: string
 }
@@ -109,6 +129,8 @@ export type CreateOutreachLogInput = {
 export type UpdateOutreachLogInput = {
   delivery_status?: DeliveryStatus
   reply_status?: ReplyStatus
+  reply_body?: string
+  reply_received_at?: string | null
   next_action?: string
   memo?: string
 }
@@ -136,6 +158,9 @@ function normalizeMedia(media: NullableMediaRow): MediaCandidate {
     operator_type: media.operator_type ?? '不明',
     contact_page_url: media.contact_page_url ?? '',
     contact_email: media.contact_email ?? '',
+    contact_slack_id: media.contact_slack_id ?? '',
+    contact_chatwork_id: media.contact_chatwork_id ?? '',
+    assigned_owner: media.assigned_owner ?? '',
     social_links: media.social_links ?? [],
     summary: media.summary ?? '',
     fit_score: media.fit_score ?? 0,
@@ -170,6 +195,8 @@ function normalizeLog(log: NullableLogRow): OutreachLog {
     sent_at: log.sent_at,
     delivery_status: log.delivery_status ?? 'pending',
     reply_status: log.reply_status ?? 'none',
+    reply_body: log.reply_body ?? '',
+    reply_received_at: log.reply_received_at ?? '',
     next_action: log.next_action ?? '',
     memo: log.memo ?? '',
   }
@@ -269,6 +296,9 @@ export async function createMediaCandidates(input: CreateMediaInput | CreateMedi
     operator_type: media.operator_type,
     contact_page_url: media.contact_page_url,
     contact_email: media.contact_email,
+    contact_slack_id: media.contact_slack_id,
+    contact_chatwork_id: media.contact_chatwork_id,
+    assigned_owner: media.assigned_owner,
     social_links: media.social_links,
     summary: media.summary,
     fit_score: media.fit_score,
@@ -300,6 +330,28 @@ export async function updateMediaStatus(id: string, status: MediaStatus) {
   const { data, error } = await supabase
     .from('media_candidates')
     .update({ status })
+    .eq('id', id)
+    .select('*')
+    .single()
+
+  if (error) throw error
+
+  return normalizeMedia(data as NullableMediaRow)
+}
+
+export async function updateMediaContact(id: string, input: UpdateMediaContactInput) {
+  if (!hasSupabaseEnv()) {
+    const media = updateDemoMediaContact(id, input)
+    if (!media) {
+      throw new Error('Media not found')
+    }
+    return media
+  }
+
+  const supabase = createSupabaseClient()
+  const { data, error } = await supabase
+    .from('media_candidates')
+    .update(input)
     .eq('id', id)
     .select('*')
     .single()
@@ -395,6 +447,8 @@ export async function createOutreachLog(input: CreateOutreachLogInput) {
       sent_at: input.sent_at,
       delivery_status: input.delivery_status ?? 'delivered',
       reply_status: input.reply_status ?? 'none',
+      reply_body: input.reply_body ?? '',
+      reply_received_at: input.reply_received_at ?? '',
       next_action: input.next_action ?? '',
       memo: input.memo ?? '',
     })
@@ -410,6 +464,8 @@ export async function createOutreachLog(input: CreateOutreachLogInput) {
       sent_at: input.sent_at,
       delivery_status: input.delivery_status ?? 'delivered',
       reply_status: input.reply_status ?? 'none',
+      reply_body: input.reply_body ?? '',
+      reply_received_at: input.reply_received_at || null,
       next_action: input.next_action ?? null,
       memo: input.memo ?? null,
     })
@@ -436,6 +492,8 @@ export async function updateOutreachLog(id: string, input: UpdateOutreachLogInpu
     .update({
       delivery_status: input.delivery_status,
       reply_status: input.reply_status,
+      reply_body: input.reply_body,
+      reply_received_at: input.reply_received_at,
       next_action: input.next_action,
       memo: input.memo,
     })

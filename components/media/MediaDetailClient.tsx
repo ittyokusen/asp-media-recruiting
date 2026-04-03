@@ -1,13 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
-import { ExternalLink, Globe, Loader2, Mail, Sparkles, UserRound } from 'lucide-react'
+import {
+  ExternalLink,
+  Globe,
+  Hash,
+  IdCard,
+  type LucideIcon,
+  Loader2,
+  Mail,
+  MessageSquareText,
+  Sparkles,
+  UserRound,
+} from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/components/AuthProvider'
 import PermissionBanner from '@/components/PermissionBanner'
+import ScoreRadarChart from '@/components/media/ScoreRadarChart'
 import { useToast } from '@/components/ToastProvider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -37,12 +49,25 @@ export default function MediaDetailClient({
   const { showToast } = useToast()
   const [drafts, setDrafts] = useState(initialDrafts)
   const [history, setHistory] = useState(initialHistory)
+  const [mediaProfile, setMediaProfile] = useState(media)
   const [mediaStatus, setMediaStatus] = useState(media.status)
   const [senderName, setSenderName] = useState('田中')
   const [senderCompany, setSenderCompany] = useState('株式会社サンプル')
   const [generating, setGenerating] = useState(false)
   const [sendingDraftId, setSendingDraftId] = useState<string | null>(null)
+  const [updatingContact, setUpdatingContact] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const businessCardInputRef = useRef<HTMLInputElement | null>(null)
+
+  const contactMethodLabel = mediaProfile.contact_email
+    ? 'Email'
+    : mediaProfile.contact_slack_id
+      ? 'Slack'
+      : mediaProfile.contact_chatwork_id
+        ? 'Chatwork'
+        : mediaProfile.contact_page_url
+          ? 'Form'
+          : 'なし'
 
   const handleGenerateDraft = async () => {
     setGenerating(true)
@@ -158,6 +183,108 @@ export default function MediaDetailClient({
     }
   }
 
+  const saveContactProfile = async (payload: Partial<MediaCandidate>, successMessage: string) => {
+    setUpdatingContact(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/media/${media.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const responsePayload = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(responsePayload?.error ?? '連絡先の更新に失敗しました')
+      }
+
+      const updatedMedia = (await response.json()) as MediaCandidate
+      setMediaProfile(updatedMedia)
+      setMediaStatus(updatedMedia.status)
+      showToast({
+        tone: 'success',
+        title: '連絡先情報を更新しました',
+        description: successMessage,
+      })
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : '連絡先の更新に失敗しました'
+      setError(message)
+      showToast({
+        tone: 'error',
+        title: '連絡先の更新に失敗しました',
+        description: message,
+      })
+    } finally {
+      setUpdatingContact(false)
+    }
+  }
+
+  const handleAssignSelf = async () => {
+    if (!user?.email) return
+
+    await saveContactProfile(
+      { assigned_owner: user.email },
+      `${user.email} を対応担当として設定しました。`
+    )
+  }
+
+  const handleBusinessCardUpload = async (file?: File) => {
+    if (!file) return
+
+    setUpdatingContact(true)
+    setError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/ai/business-card', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const responsePayload = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(responsePayload?.error ?? '名刺の読み取りに失敗しました')
+      }
+
+      const extracted = (await response.json()) as {
+        operator_name: string
+        contact_email: string
+        contact_slack_id: string
+        contact_chatwork_id: string
+        contact_page_url: string
+        memo: string
+      }
+
+      await saveContactProfile(
+        {
+          operator_name: extracted.operator_name || mediaProfile.operator_name,
+          contact_email: extracted.contact_email || mediaProfile.contact_email,
+          contact_page_url: extracted.contact_page_url || mediaProfile.contact_page_url,
+          contact_slack_id: extracted.contact_slack_id || mediaProfile.contact_slack_id,
+          contact_chatwork_id: extracted.contact_chatwork_id || mediaProfile.contact_chatwork_id,
+          assigned_owner: mediaProfile.assigned_owner || user?.email || '',
+        },
+        extracted.memo || '名刺画像から読み取った連絡先を反映しました。'
+      )
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : '名刺の読み取りに失敗しました'
+      setError(message)
+      showToast({
+        tone: 'error',
+        title: '名刺の読み取りに失敗しました',
+        description: message,
+      })
+    } finally {
+      if (businessCardInputRef.current) {
+        businessCardInputRef.current.value = ''
+      }
+      setUpdatingContact(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="surface-panel overflow-hidden">
@@ -202,10 +329,15 @@ export default function MediaDetailClient({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3 lg:w-[360px] lg:grid-cols-1">
-              <MetricCard label="適合スコア" value={`${media.fit_score}`} subLabel="/ 100" />
+              <MetricCard
+                label="適合スコア"
+                value={`${media.fit_score}`}
+                subLabel="/ 100"
+                description={media.fit_reason}
+              />
               <MetricCard
                 label="問い合わせ導線"
-                value={media.contact_email ? 'Email' : media.contact_page_url ? 'Form' : 'なし'}
+                value={contactMethodLabel}
               />
               <MetricCard
                 label="優先アクション"
@@ -237,9 +369,19 @@ export default function MediaDetailClient({
             </CardHeader>
             <CardContent className="grid gap-4">
               <InfoRow label="読者層" value={media.estimated_audience} />
-              <InfoRow label="運営者" value={media.operator_name} />
+              <InfoRow label="運営者" value={mediaProfile.operator_name} />
               <InfoRow label="運営形態" value={media.operator_type} />
               <InfoRow label="案件名" value={campaign.campaign_name} />
+              <InfoRow label="対応担当" value={mediaProfile.assigned_owner || '未設定'} />
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 rounded-2xl"
+                disabled={!canWrite || updatingContact || !user?.email}
+                onClick={() => void handleAssignSelf()}
+              >
+                自分を担当にする
+              </Button>
             </CardContent>
           </Card>
 
@@ -247,10 +389,11 @@ export default function MediaDetailClient({
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Sparkles className="size-4 text-slate-500" />
-                適合理由
+                スコア詳細
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              <ScoreRadarChart media={mediaProfile} />
               <div className="rounded-[24px] bg-slate-50 p-4 text-sm leading-7 text-slate-700">
                 {media.fit_reason}
               </div>
@@ -265,25 +408,68 @@ export default function MediaDetailClient({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {media.contact_email && <InfoRow label="メール" value={media.contact_email} />}
-              {media.contact_page_url && (
+              {mediaProfile.contact_email && <InfoRow label="メール" value={mediaProfile.contact_email} />}
+              {mediaProfile.contact_slack_id && (
+                <ContactAccountRow
+                  icon={Hash}
+                  label="Slack"
+                  value={mediaProfile.contact_slack_id}
+                />
+              )}
+              {mediaProfile.contact_chatwork_id && (
+                <ContactAccountRow
+                  icon={MessageSquareText}
+                  label="Chatwork"
+                  value={mediaProfile.contact_chatwork_id}
+                />
+              )}
+              {mediaProfile.contact_page_url && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                     フォーム
                   </p>
                   <a
-                    href={media.contact_page_url}
+                    href={mediaProfile.contact_page_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-1 inline-flex break-all text-sm text-teal-700 hover:underline"
                   >
-                    {media.contact_page_url}
+                    {mediaProfile.contact_page_url}
                   </a>
                 </div>
               )}
-              {!media.contact_email && !media.contact_page_url && (
+              {!mediaProfile.contact_email &&
+                !mediaProfile.contact_slack_id &&
+                !mediaProfile.contact_chatwork_id &&
+                !mediaProfile.contact_page_url && (
                 <p className="text-sm text-rose-500">問い合わせ先が見つかっていません。</p>
               )}
+              <input
+                ref={businessCardInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => void handleBusinessCardUpload(event.target.files?.[0])}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 w-full rounded-2xl"
+                disabled={!canWrite || updatingContact}
+                onClick={() => businessCardInputRef.current?.click()}
+              >
+                {updatingContact ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    名刺読取中...
+                  </>
+                ) : (
+                  <>
+                    <IdCard className="size-4" />
+                    名刺から連絡先を取り込む
+                  </>
+                )}
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -470,6 +656,19 @@ export default function MediaDetailClient({
                           <p className="mt-3 text-sm text-slate-600">
                             次のアクション: {log.next_action || '設定なし'}
                           </p>
+                          {log.reply_body ? (
+                            <div className="mt-3 rounded-[18px] bg-white px-3 py-3 text-sm leading-6 text-slate-700">
+                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                                返信本文
+                              </p>
+                              <p className="mt-2 whitespace-pre-wrap">{log.reply_body}</p>
+                              {log.reply_received_at ? (
+                                <p className="mt-2 text-xs text-slate-400">
+                                  受信日時: {new Date(log.reply_received_at).toLocaleString('ja-JP')}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
                           <p className="mt-1 text-sm text-slate-500">{log.memo || 'メモは未登録です。'}</p>
                         </div>
                       ))}
@@ -489,10 +688,12 @@ function MetricCard({
   label,
   value,
   subLabel,
+  description,
 }: {
   label: string
   value: string
   subLabel?: string
+  description?: string
 }) {
   return (
     <div className="rounded-[24px] border border-slate-200 bg-white/90 p-4 shadow-sm">
@@ -501,6 +702,9 @@ function MetricCard({
         <p className="text-3xl font-semibold text-slate-950">{value}</p>
         {subLabel ? <span className="pb-1 text-xs text-slate-400">{subLabel}</span> : null}
       </div>
+      {description ? (
+        <p className="mt-3 line-clamp-3 text-xs leading-5 text-slate-500">{description}</p>
+      ) : null}
     </div>
   )
 }
@@ -510,6 +714,26 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
       <p className="mt-1 text-sm text-slate-700">{value}</p>
+    </div>
+  )
+}
+
+function ContactAccountRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+}) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
+      <div className="mt-1 inline-flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
+        <Icon className="size-4 text-slate-500" />
+        {value}
+      </div>
     </div>
   )
 }

@@ -166,11 +166,23 @@ export default function OutreachDashboard({
               ? '見送り理由をメモして案件対象外に整理'
               : log.next_action
 
+      const replyBody =
+        replyStatus === 'none'
+          ? ''
+          : log.reply_body ||
+            window.prompt('返信本文を貼り付けてください', log.reply_body || '') ||
+            ''
+
       const response = await fetch(`/api/outreach/logs/${log.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           reply_status: replyStatus,
+          reply_body: replyBody,
+          reply_received_at:
+            replyStatus === 'none'
+              ? ''
+              : log.reply_received_at || new Date().toISOString(),
           next_action: nextAction,
           memo: log.memo,
         }),
@@ -303,6 +315,9 @@ export default function OutreachDashboard({
                             <p className="truncate font-semibold text-slate-900">{media.media_name}</p>
                           </div>
                           <p className="mt-1 text-xs text-slate-500">{media.domain}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            担当: {media.assigned_owner || '未設定'}
+                          </p>
                         </div>
                         <Badge className="bg-emerald-100 text-emerald-700">確認済み</Badge>
                       </div>
@@ -344,6 +359,9 @@ export default function OutreachDashboard({
                   <TableCell>
                     <p className="font-medium text-slate-900">{media.media_name}</p>
                     <p className="text-xs text-slate-500">{media.domain}</p>
+                    <p className="text-xs text-slate-500">
+                      担当: {media.assigned_owner || '未設定'}
+                    </p>
                   </TableCell>
                   <TableCell className="text-sm text-slate-600">
                     {media.contact_email || 'フォームのみ'}
@@ -395,6 +413,9 @@ export default function OutreachDashboard({
                             <p className="mt-1 text-xs text-slate-500">
                               {log ? new Date(log.sent_at).toLocaleDateString('ja-JP') : '送信日未記録'}
                             </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              担当: {media.assigned_owner || '未設定'}
+                            </p>
                           </div>
                           <Badge className={STATUS_COLORS[media.status]}>
                             {STATUS_LABELS[media.status]}
@@ -403,6 +424,11 @@ export default function OutreachDashboard({
                         <p className="text-sm text-slate-600">
                           次のアクション: {log?.next_action || '—'}
                         </p>
+                        {log?.reply_body ? (
+                          <p className="rounded-2xl bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-700">
+                            返信本文: {log.reply_body}
+                          </p>
+                        ) : null}
                         {log ? (
                           <Select
                             value={log.reply_status}
@@ -449,6 +475,9 @@ export default function OutreachDashboard({
                     <TableCell>
                       <p className="font-medium text-slate-900">{media.media_name}</p>
                       <p className="text-xs text-slate-500">{media.domain}</p>
+                      <p className="text-xs text-slate-500">
+                        担当: {media.assigned_owner || '未設定'}
+                      </p>
                     </TableCell>
                     <TableCell className="text-sm text-slate-600">
                       {log ? new Date(log.sent_at).toLocaleDateString('ja-JP') : '—'}
@@ -477,7 +506,14 @@ export default function OutreachDashboard({
                         '—'
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-slate-600">{log?.next_action || '—'}</TableCell>
+                    <TableCell className="text-sm text-slate-600">
+                      <p>{log?.next_action || '—'}</p>
+                      {log?.reply_body ? (
+                        <p className="mt-1 line-clamp-2 max-w-xs text-xs text-slate-500">
+                          返信: {log.reply_body}
+                        </p>
+                      ) : null}
+                    </TableCell>
                     <TableCell>
                       <Link href={`/media/${media.id}`}>
                         <Button size="sm" variant="ghost" className="rounded-2xl">
@@ -504,6 +540,9 @@ export default function OutreachDashboard({
                           <div className="min-w-0">
                             <p className="truncate font-semibold text-slate-900">{media.media_name}</p>
                             <p className="mt-1 text-xs text-slate-500">{media.domain}</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              担当: {media.assigned_owner || '未設定'}
+                            </p>
                           </div>
                           <Badge className={STATUS_COLORS[media.status]}>
                             {STATUS_LABELS[media.status]}
@@ -512,6 +551,11 @@ export default function OutreachDashboard({
                         <p className="text-sm leading-6 text-slate-600">
                           {log?.memo || log?.next_action || 'メモは未登録です'}
                         </p>
+                        {log?.reply_body ? (
+                          <p className="rounded-2xl bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-700">
+                            返信本文: {log.reply_body}
+                          </p>
+                        ) : null}
                         <Link href={`/media/${media.id}`}>
                           <Button variant="outline" className="h-11 w-full rounded-2xl">
                             詳細を見る
@@ -535,12 +579,20 @@ export default function OutreachDashboard({
                     <TableCell>
                       <p className="font-medium text-slate-900">{media.media_name}</p>
                       <p className="text-xs text-slate-500">{media.domain}</p>
+                      <p className="text-xs text-slate-500">
+                        担当: {media.assigned_owner || '未設定'}
+                      </p>
                     </TableCell>
                     <TableCell>
                       <Badge className={STATUS_COLORS[media.status]}>{STATUS_LABELS[media.status]}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-slate-500">
-                      {log?.memo || log?.next_action || 'メモは未登録です'}
+                      <p>{log?.memo || log?.next_action || 'メモは未登録です'}</p>
+                      {log?.reply_body ? (
+                        <p className="mt-1 line-clamp-2 max-w-xs text-xs text-slate-500">
+                          返信: {log.reply_body}
+                        </p>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <Link href={`/media/${media.id}`}>
@@ -578,6 +630,16 @@ export default function OutreachDashboard({
                           </Badge>
                         </div>
                         <p className="text-sm text-slate-600">送信者: {log.sent_by}</p>
+                        {media ? (
+                          <p className="text-sm text-slate-600">
+                            担当: {media.assigned_owner || '未設定'}
+                          </p>
+                        ) : null}
+                        {log.reply_body ? (
+                          <p className="rounded-2xl bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-700">
+                            返信本文: {log.reply_body}
+                          </p>
+                        ) : null}
                         <p className="text-sm leading-6 text-slate-600">
                           {log.memo || log.next_action || 'メモは未登録です'}
                         </p>
@@ -596,7 +658,14 @@ export default function OutreachDashboard({
 
                 return (
                   <TableRow key={log.id} className="border-b border-slate-100 hover:bg-slate-50/70">
-                    <TableCell className="font-medium text-slate-900">{media?.media_name || '—'}</TableCell>
+                    <TableCell className="font-medium text-slate-900">
+                      <p>{media?.media_name || '—'}</p>
+                      {media ? (
+                        <p className="text-xs font-normal text-slate-500">
+                          担当: {media.assigned_owner || '未設定'}
+                        </p>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="text-sm text-slate-600">{log.sent_by}</TableCell>
                     <TableCell className="text-sm text-slate-600">
                       {new Date(log.sent_at).toLocaleString('ja-JP')}
@@ -625,7 +694,14 @@ export default function OutreachDashboard({
                         {REPLY_STATUS_LABELS[log.reply_status]}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-slate-500">{log.memo || '—'}</TableCell>
+                    <TableCell className="text-sm text-slate-500">
+                      <p>{log.memo || '—'}</p>
+                      {log.reply_body ? (
+                        <p className="mt-1 line-clamp-2 max-w-xs text-xs text-slate-500">
+                          返信: {log.reply_body}
+                        </p>
+                      ) : null}
+                    </TableCell>
                   </TableRow>
                 )
               })}

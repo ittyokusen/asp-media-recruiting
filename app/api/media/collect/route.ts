@@ -141,6 +141,9 @@ export async function POST(req: NextRequest) {
               operator_type: analysis.operator_type_estimation,
               contact_page_url: contact.contact_page_url ?? scraped.contactPageUrl ?? '',
               contact_email: contact.contact_email ?? scraped.emails[0] ?? '',
+              contact_slack_id: '',
+              contact_chatwork_id: '',
+              assigned_owner: '',
               social_links:
                 contact.social_links.length > 0 ? contact.social_links : scraped.socialLinks,
               summary: analysis.summary,

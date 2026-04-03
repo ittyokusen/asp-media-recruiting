@@ -36,6 +36,9 @@ export interface MediaCandidate {
   operator_type: string
   contact_page_url: string
   contact_email: string
+  contact_slack_id: string
+  contact_chatwork_id: string
+  assigned_owner: string
   social_links: string[]
   summary: string
   fit_score: number // 0-100
@@ -73,6 +76,8 @@ export interface OutreachLog {
   sent_at: string
   delivery_status: DeliveryStatus
   reply_status: ReplyStatus
+  reply_body: string
+  reply_received_at: string
   next_action: string
   memo: string
 }

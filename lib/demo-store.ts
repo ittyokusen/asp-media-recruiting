@@ -98,6 +98,42 @@ export function updateDemoMediaStatus(id: string, status: MediaStatus) {
   return updated
 }
 
+export function updateDemoMediaContact(
+  id: string,
+  input: Partial<
+    Pick<
+      MediaCandidate,
+      | 'operator_name'
+      | 'contact_email'
+      | 'contact_page_url'
+      | 'contact_slack_id'
+      | 'contact_chatwork_id'
+      | 'assigned_owner'
+    >
+  >
+) {
+  let updated: MediaCandidate | null = null
+
+  mediaStore = mediaStore.map((media) => {
+    if (media.id !== id) return media
+
+    updated = {
+      ...media,
+      operator_name: input.operator_name ?? media.operator_name,
+      contact_email: input.contact_email ?? media.contact_email,
+      contact_page_url: input.contact_page_url ?? media.contact_page_url,
+      contact_slack_id: input.contact_slack_id ?? media.contact_slack_id,
+      contact_chatwork_id: input.contact_chatwork_id ?? media.contact_chatwork_id,
+      assigned_owner: input.assigned_owner ?? media.assigned_owner,
+      updated_at: nowIso(),
+    }
+
+    return updated
+  })
+
+  return updated
+}
+
 export function getDemoDrafts(mediaId: string) {
   return draftsStore
     .filter((draft) => draft.media_candidate_id === mediaId)
@@ -134,6 +170,8 @@ export function createDemoLog(input: {
   sent_at?: string
   delivery_status: DeliveryStatus
   reply_status: ReplyStatus
+  reply_body: string
+  reply_received_at: string
   next_action: string
   memo: string
 }) {
@@ -152,6 +190,8 @@ export function updateDemoLog(
   input: {
     delivery_status?: DeliveryStatus
     reply_status?: ReplyStatus
+    reply_body?: string
+    reply_received_at?: string | null
     next_action?: string
     memo?: string
   }
@@ -165,6 +205,8 @@ export function updateDemoLog(
       ...log,
       delivery_status: input.delivery_status ?? log.delivery_status,
       reply_status: input.reply_status ?? log.reply_status,
+      reply_body: input.reply_body ?? log.reply_body,
+      reply_received_at: input.reply_received_at ?? log.reply_received_at,
       next_action: input.next_action ?? log.next_action,
       memo: input.memo ?? log.memo,
     }

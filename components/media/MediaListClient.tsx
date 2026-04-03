@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Filter, Globe, Loader2, Mail, Search, SlidersHorizontal } from 'lucide-react'
 
 import PermissionBanner from '@/components/PermissionBanner'
+import ScoreRadarChart from '@/components/media/ScoreRadarChart'
 import { useAuth } from '@/components/AuthProvider'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -364,6 +365,15 @@ export default function MediaListClient({ initialCampaign }: { initialCampaign: 
                         label="問い合わせ"
                         value={media.contact_email ? 'メールあり' : media.contact_page_url ? 'フォームのみ' : 'なし'}
                       />
+                    </div>
+                    <div className="rounded-2xl bg-teal-50/70 px-3 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+                        スコア詳細
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-slate-700">{media.fit_reason}</p>
+                      <div className="mt-3 rounded-[20px] bg-white/80 p-3">
+                        <ScoreRadarChart media={media} compact />
+                      </div>
                     </div>
                     <Link href={`/media/${media.id}`}>
                       <Button className="w-full rounded-2xl">詳細を見る</Button>

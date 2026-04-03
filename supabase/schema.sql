@@ -40,6 +40,9 @@ create table media_candidates (
   operator_type text,
   contact_page_url text,
   contact_email text,
+  contact_slack_id text default '',
+  contact_chatwork_id text default '',
+  assigned_owner text default '',
   social_links text[] default '{}',
   summary text,
   fit_score integer check (fit_score >= 0 and fit_score <= 100),
@@ -79,6 +82,8 @@ create table outreach_logs (
   sent_at timestamptz default now(),
   delivery_status delivery_status default 'pending',
   reply_status reply_status default 'none',
+  reply_body text default '',
+  reply_received_at timestamptz,
   next_action text,
   memo text,
   created_at timestamptz default now()

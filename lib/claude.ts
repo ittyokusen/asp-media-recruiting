@@ -22,6 +22,17 @@ function extractValue(prompt: string, label: string) {
 }
 
 function mockResponse(prompt: string) {
+  if (prompt.includes('"contact_slack_id"') && prompt.includes('"contact_chatwork_id"')) {
+    return {
+      operator_name: '山田 太郎',
+      contact_email: 'taro.yamada@example-demo.jp',
+      contact_slack_id: '@taro_yamada',
+      contact_chatwork_id: 'taro_yamada_demo',
+      contact_page_url: 'https://example-demo.jp/contact',
+      memo: 'デモモードの名刺OCR結果です。',
+    }
+  }
+
   if (prompt.includes('"subject_candidates"')) {
     const mediaName = extractValue(prompt, 'メディア名') || 'ご担当者'
     const campaignName = extractValue(prompt, '案件名') || '案件'
@@ -157,4 +168,52 @@ export async function callClaude<T>(prompt: string): Promise<T> {
     }
     throw new AIRequestError('invalid_json', 'Gemini response could not be parsed as JSON')
   }
+}
+
+export async function callClaudeVision<T>({
+  prompt,
+  mimeType,
+  base64Data,
+}: {
+  prompt: string
+  mimeType: string
+  base64Data: string
+}): Promise<T> {
+  if (!hasGeminiKey()) {
+    return mockResponse(prompt) as T
+  }
+
+  const client = getClient()
+  const model = client.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    generationConfig: {
+      responseMimeType: 'application/json',
+      temperature: 0.2,
+    },
+  })
+
+  const text = await withRetry(
+    async () => {
+      const response = await withTimeout(
+        async () =>
+          model.generateContent([
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType,
+                data: base64Data,
+              },
+            },
+          ]),
+        Number(process.env.GEMINI_TIMEOUT_MS ?? 15000)
+      )
+
+      return response.response.text()
+    },
+    {
+      retries: Number(process.env.GEMINI_RETRIES ?? 2),
+    }
+  )
+
+  return JSON.parse(extractJsonBlock(text)) as T
 }
