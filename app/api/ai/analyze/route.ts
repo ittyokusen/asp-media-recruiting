@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { toApiErrorMessage } from '@/lib/ai'
 import { scrapeSite } from '@/lib/crawler/scraper'
 import { buildAnalyzeMediaPrompt, buildExtractContactPrompt } from '@/lib/prompts/analyze-media'
-import { callClaude } from '@/lib/claude'
+import { callClaude } from '@/lib/gemini'
+import { extractHostname } from '@/lib/utils'
 import type { Campaign } from '@/types'
 
 interface AnalyzeRequest {
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     const response = NextResponse.json({
       url,
-      domain: new URL(url).hostname.replace(/^www\./, ''),
+      domain: extractHostname(url),
       // 分析結果
       ...analysis,
       // コンタクト情報

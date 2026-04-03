@@ -1,18 +1,26 @@
 import type { Campaign } from '@/types'
+import { sanitizeForPrompt } from '@/lib/utils'
 
 /**
  * メディア候補の検索クエリを生成するプロンプト
  */
 export function buildSearchQueriesPrompt(campaign: Campaign): string {
+  const safeCampaignName = sanitizeForPrompt(campaign.campaign_name)
+  const safeCategory = sanitizeForPrompt(campaign.category)
+  const safeAppealPoints = campaign.appeal_points.map(sanitizeForPrompt).join('、')
+  const safePreferredTraits = campaign.preferred_media_traits.map(sanitizeForPrompt).join('、')
+  const safeGoodExamples =
+    campaign.existing_good_media_examples.map(sanitizeForPrompt).join('、') || 'なし'
+
   return `あなたはアフィリエイトマーケティングの専門家です。
 以下の案件に適した新規メディアを探すための検索クエリを生成してください。
 
 ## 案件情報
-- 案件名: ${campaign.campaign_name}
-- カテゴリ: ${campaign.category}
-- 訴求ポイント: ${campaign.appeal_points.join('、')}
-- 好ましいメディア特性: ${campaign.preferred_media_traits.join('、')}
-- 既存の優良メディア例: ${campaign.existing_good_media_examples.join('、') || 'なし'}
+- 案件名: ${safeCampaignName}
+- カテゴリ: ${safeCategory}
+- 訴求ポイント: ${safeAppealPoints}
+- 好ましいメディア特性: ${safePreferredTraits}
+- 既存の優良メディア例: ${safeGoodExamples}
 
 ## 検索クエリ生成のルール
 - Google検索で使うクエリを生成する

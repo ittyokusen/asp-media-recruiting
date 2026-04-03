@@ -1,4 +1,8 @@
+import { createHmac, timingSafeEqual } from 'node:crypto'
+
 import { cookies } from 'next/headers'
+
+import { SESSION_TTL_MS } from '@/lib/constants'
 
 export type UserRole = 'admin' | 'viewer'
 
@@ -12,6 +16,7 @@ type AuthAccount = AuthUser & {
 }
 
 const AUTH_COOKIE_NAME = 'asp_auth'
+const TOKEN_SECRET = process.env.TOKEN_SECRET || 'demo-token-secret-change-me'
 
 function base64UrlEncode(input: string) {
   return Buffer.from(input).toString('base64url')
@@ -19,6 +24,22 @@ function base64UrlEncode(input: string) {
 
 function base64UrlDecode(input: string) {
   return Buffer.from(input, 'base64url').toString('utf8')
+}
+
+function signPayload(encodedPayload: string) {
+  return createHmac('sha256', TOKEN_SECRET).update(encodedPayload).digest('base64url')
+}
+
+function verifySignature(encodedPayload: string, encodedSignature: string) {
+  const expectedSignature = signPayload(encodedPayload)
+  const actual = Buffer.from(encodedSignature, 'base64url')
+  const expected = Buffer.from(expectedSignature, 'base64url')
+
+  if (actual.length !== expected.length) {
+    return false
+  }
+
+  return timingSafeEqual(actual, expected)
 }
 
 function defaultAccounts(): AuthAccount[] {
@@ -56,13 +77,16 @@ export function authenticateUser(email: string, password: string): AuthUser | nu
 }
 
 export function createSessionToken(user: AuthUser) {
-  return base64UrlEncode(
+  const encodedPayload = base64UrlEncode(
     JSON.stringify({
       email: user.email,
       role: user.role,
-      exp: Date.now() + 1000 * 60 * 60 * 24 * 7,
+      exp: Date.now() + SESSION_TTL_MS,
     })
   )
+  const encodedSignature = signPayload(encodedPayload)
+
+  return `${encodedPayload}.${encodedSignature}`
 }
 
 export function verifySessionToken(token?: string | null): AuthUser | null {
@@ -71,7 +95,13 @@ export function verifySessionToken(token?: string | null): AuthUser | null {
   }
 
   try {
-    const decoded = JSON.parse(base64UrlDecode(token)) as {
+    const [encodedPayload, encodedSignature] = token.split('.')
+
+    if (!encodedPayload || !encodedSignature || !verifySignature(encodedPayload, encodedSignature)) {
+      return null
+    }
+
+    const decoded = JSON.parse(base64UrlDecode(encodedPayload)) as {
       email: string
       role: UserRole
       exp: number

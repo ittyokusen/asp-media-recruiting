@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireWriteUser } from '@/lib/auth'
 import { toApiErrorMessage } from '@/lib/ai'
 import { buildGenerateEmailPrompt } from '@/lib/prompts/generate-email'
-import { callClaude } from '@/lib/claude'
+import { callClaude } from '@/lib/gemini'
 import type { Campaign, MediaCandidate } from '@/types'
 
 interface GenerateEmailRequest {

@@ -3,6 +3,8 @@
  * サーバーサイド（API Route）でのみ使用
  */
 
+import { extractHostname } from '@/lib/utils'
+
 export interface ScrapeResult {
   url: string
   title: string
@@ -134,7 +136,7 @@ export function deduplicateDomains(urls: string[]): string[] {
   const seen = new Set<string>()
   return urls.filter((url) => {
     try {
-      const domain = new URL(url).hostname.replace(/^www\./, '')
+      const domain = extractHostname(url)
       if (seen.has(domain)) return false
       seen.add(domain)
       return true

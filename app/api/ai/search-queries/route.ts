@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { toApiErrorMessage } from '@/lib/ai'
 import { buildSearchQueriesPrompt } from '@/lib/prompts/generate-search-queries'
-import { callClaude } from '@/lib/claude'
+import { callClaude } from '@/lib/gemini'
 import type { Campaign } from '@/types'
 
 interface SearchQueriesResult {

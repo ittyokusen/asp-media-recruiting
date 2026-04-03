@@ -1,4 +1,5 @@
 import type { Campaign } from '@/types'
+import { sanitizeForPrompt } from '@/lib/utils'
 
 /**
  * サイトHTML/テキストからメディア特性を分析するプロンプト
@@ -8,21 +9,28 @@ export function buildAnalyzeMediaPrompt(
   url: string,
   campaign: Campaign
 ): string {
+  const safeCampaignName = sanitizeForPrompt(campaign.campaign_name)
+  const safeCategory = sanitizeForPrompt(campaign.category)
+  const safeAppealPoints = campaign.appeal_points.map(sanitizeForPrompt).join('、')
+  const safePreferredTraits = campaign.preferred_media_traits.map(sanitizeForPrompt).join('、')
+  const safeUrl = sanitizeForPrompt(url)
+  const safeSiteText = sanitizeForPrompt(siteText)
+
   return `あなたはアフィリエイトマーケティングの専門家です。
 以下のWebサイトのテキスト内容を分析し、案件との相性を評価してください。
 
 ## 対象案件
-- 案件名: ${campaign.campaign_name}
-- カテゴリ: ${campaign.category}
-- 訴求ポイント: ${campaign.appeal_points.join('、')}
-- 好ましいメディア特性: ${campaign.preferred_media_traits.join('、')}
+- 案件名: ${safeCampaignName}
+- カテゴリ: ${safeCategory}
+- 訴求ポイント: ${safeAppealPoints}
+- 好ましいメディア特性: ${safePreferredTraits}
 
 ## 分析対象サイト
-URL: ${url}
+URL: ${safeUrl}
 
 サイトテキスト:
 ---
-${siteText.slice(0, 4000)}
+${safeSiteText}
 ---
 
 ## 出力形式（必ずJSON形式で返してください）
@@ -53,13 +61,16 @@ ${siteText.slice(0, 4000)}
  * 運営者情報・問い合わせ先を抽出するプロンプト
  */
 export function buildExtractContactPrompt(html: string, url: string): string {
+  const safeUrl = sanitizeForPrompt(url)
+  const safeHtml = sanitizeForPrompt(html)
+
   return `以下のHTMLから運営者情報と問い合わせ先を抽出してください。
 
-URL: ${url}
+URL: ${safeUrl}
 
 HTML（先頭部分）:
 ---
-${html.slice(0, 3000)}
+${safeHtml}
 ---
 
 ## 出力形式（必ずJSON形式で返してください）

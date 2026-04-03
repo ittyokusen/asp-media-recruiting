@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { AIRequestError, extractJsonBlock, withRetry, withTimeout } from '@/lib/ai'
+import { extractHostname } from '@/lib/utils'
 
 function getClient() {
   const apiKey = process.env.GEMINI_API_KEY
@@ -77,7 +78,7 @@ function mockResponse(prompt: string) {
   if (prompt.includes('"campaign_fit_reason"')) {
     const url = extractValue(prompt, 'URL') || 'https://example-demo.jp'
     return {
-      media_name: new URL(url).hostname.replace(/^www\./, ''),
+      media_name: extractHostname(url),
       genre: '健康・生活習慣',
       estimated_audience: '40〜60代',
       article_topics: ['比較記事', '体験談', '生活改善'],

@@ -1,5 +1,10 @@
 import type { MediaStatus, PriorityRank } from '@/types'
 
+export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7
+export const COLLECT_MAX_SITES = 30
+export const COLLECT_MIN_SITES = 1
+export const COLLECT_DEFAULT_SITES = 10
+
 export const STATUS_LABELS: Record<MediaStatus, string> = {
   unreviewed: '未確認',
   ready_to_send: '送信待ち',

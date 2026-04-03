@@ -1,8 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 
 import { requireWriteUser } from '@/lib/auth'
 import { getMediaCandidateById, updateMediaContact, updateMediaStatus } from '@/lib/db'
-import type { MediaStatus } from '@/types'
+
+const mediaStatusSchema = z.enum([
+  'unreviewed',
+  'ready_to_send',
+  'sent',
+  'replied',
+  'interested',
+  'partnered',
+  'passed',
+  'retry_candidate',
+])
+
+const mediaPatchSchema = z
+  .object({
+    status: mediaStatusSchema.optional(),
+    operator_name: z.string().optional(),
+    contact_email: z.string().optional(),
+    contact_page_url: z.string().optional(),
+    contact_slack_id: z.string().optional(),
+    contact_chatwork_id: z.string().optional(),
+    assigned_owner: z.string().optional(),
+  })
+  .refine(
+    (body) =>
+      body.status !== undefined ||
+      body.operator_name !== undefined ||
+      body.contact_email !== undefined ||
+      body.contact_page_url !== undefined ||
+      body.contact_slack_id !== undefined ||
+      body.contact_chatwork_id !== undefined ||
+      body.assigned_owner !== undefined,
+    { message: 'At least one field is required' }
+  )
 
 export async function GET(
   _request: Request,
@@ -34,29 +67,39 @@ export async function PATCH(
     await requireWriteUser()
     const { id } = await params
     const body = await request.json()
-    const hasContactUpdate = [
-      'operator_name',
-      'contact_email',
-      'contact_page_url',
-      'contact_slack_id',
-      'contact_chatwork_id',
-      'assigned_owner',
-    ].some((key) => body?.[key] !== undefined)
+    const parsed = mediaPatchSchema.safeParse(body)
 
-    if (!body?.status && !hasContactUpdate) {
-      return NextResponse.json({ error: 'update field is required' }, { status: 400 })
+    if (!parsed.success) {
+      return NextResponse.json({ error: '入力値が不正です' }, { status: 400 })
     }
 
-    const media = hasContactUpdate
-      ? await updateMediaContact(id, {
-          operator_name: body.operator_name,
-          contact_email: body.contact_email,
-          contact_page_url: body.contact_page_url,
-          contact_slack_id: body.contact_slack_id,
-          contact_chatwork_id: body.contact_chatwork_id,
-          assigned_owner: body.assigned_owner,
-        })
-      : await updateMediaStatus(id, body.status as MediaStatus)
+    let media = await getMediaCandidateById(id)
+    if (!media) {
+      return NextResponse.json({ error: 'Media not found' }, { status: 404 })
+    }
+
+    const hasContactUpdate =
+      parsed.data.operator_name !== undefined ||
+      parsed.data.contact_email !== undefined ||
+      parsed.data.contact_page_url !== undefined ||
+      parsed.data.contact_slack_id !== undefined ||
+      parsed.data.contact_chatwork_id !== undefined ||
+      parsed.data.assigned_owner !== undefined
+
+    if (hasContactUpdate) {
+      media = await updateMediaContact(id, {
+        operator_name: parsed.data.operator_name,
+        contact_email: parsed.data.contact_email,
+        contact_page_url: parsed.data.contact_page_url,
+        contact_slack_id: parsed.data.contact_slack_id,
+        contact_chatwork_id: parsed.data.contact_chatwork_id,
+        assigned_owner: parsed.data.assigned_owner,
+      })
+    }
+
+    if (parsed.data.status !== undefined) {
+      media = await updateMediaStatus(id, parsed.data.status)
+    }
 
     return NextResponse.json(media)
   } catch (error) {

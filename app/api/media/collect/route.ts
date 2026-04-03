@@ -1,13 +1,19 @@
 import { NextRequest } from 'next/server'
 import { requireWriteUser } from '@/lib/auth'
 import { toApiErrorMessage } from '@/lib/ai'
+import {
+  COLLECT_DEFAULT_SITES,
+  COLLECT_MAX_SITES,
+  COLLECT_MIN_SITES,
+} from '@/lib/constants'
 import { scrapeSite, deduplicateDomains } from '@/lib/crawler/scraper'
 import {
   buildAnalyzeMediaPrompt,
   buildExtractContactPrompt,
 } from '@/lib/prompts/analyze-media'
 import { buildSearchQueriesPrompt } from '@/lib/prompts/generate-search-queries'
-import { callClaude } from '@/lib/claude'
+import { callClaude } from '@/lib/gemini'
+import { extractHostname } from '@/lib/utils'
 import type { Campaign, MediaCandidate, PriorityRank } from '@/types'
 
 // SSEヘルパー
@@ -21,14 +27,19 @@ interface CollectRequest {
 }
 
 function getCollectConfig(requestedMaxSites?: number) {
-  const fallbackMaxSites = Number(process.env.MEDIA_COLLECT_MAX_SITES ?? '15')
+  const fallbackMaxSites = Number(
+    process.env.MEDIA_COLLECT_MAX_SITES ?? String(COLLECT_DEFAULT_SITES)
+  )
   const fallbackQueryLimit = Number(process.env.MEDIA_COLLECT_QUERY_LIMIT ?? '5')
   const searchTimeoutMs = Number(process.env.GOOGLE_SEARCH_TIMEOUT_MS ?? '8000')
   const analyzeDelayMs = Number(process.env.MEDIA_COLLECT_DELAY_MS ?? '500')
 
   return {
-    maxSites: Math.min(Math.max(requestedMaxSites ?? fallbackMaxSites, 1), 30),
-    queryLimit: Math.min(Math.max(fallbackQueryLimit, 1), 10),
+    maxSites: Math.min(
+      Math.max(requestedMaxSites ?? fallbackMaxSites, COLLECT_MIN_SITES),
+      COLLECT_MAX_SITES
+    ),
+    queryLimit: Math.min(Math.max(fallbackQueryLimit, COLLECT_MIN_SITES), 10),
     searchTimeoutMs: Math.max(searchTimeoutMs, 1000),
     analyzeDelayMs: Math.max(analyzeDelayMs, 0),
   }
@@ -133,7 +144,7 @@ export async function POST(req: NextRequest) {
               id: `media_${Date.now()}_${i}`,
               campaign_id: campaign.id,
               media_name: analysis.media_name || scraped.title || url,
-              domain: new URL(url).hostname.replace(/^www\./, ''),
+              domain: extractHostname(url),
               url,
               genre: analysis.genre,
               estimated_audience: analysis.estimated_audience,

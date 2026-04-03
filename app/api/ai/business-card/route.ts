@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { toApiErrorMessage } from '@/lib/ai'
 import { requireWriteUser } from '@/lib/auth'
-import { callClaudeVision } from '@/lib/claude'
+import { callClaudeVision } from '@/lib/gemini'
 
 export async function POST(request: NextRequest) {
   try {
