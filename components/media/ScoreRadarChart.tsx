@@ -24,9 +24,11 @@ const buildPolygonPoints = (values: number[]) =>
 
 export default function ScoreRadarChart({
   media,
+  targetLabel = '現在の案件',
   compact = false,
 }: {
   media: MediaCandidate
+  targetLabel?: string
   compact?: boolean
 }) {
   const breakdown = getScoreBreakdown(media)
@@ -89,11 +91,19 @@ export default function ScoreRadarChart({
           })}
           <text
             x={CENTER}
-            y={CENTER + 4}
+            y={CENTER - 2}
             textAnchor="middle"
-            className="fill-slate-900 text-[22px] font-bold"
+            className="fill-slate-900 text-[24px] font-bold"
           >
             {media.fit_score}
+          </text>
+          <text
+            x={CENTER}
+            y={CENTER + 16}
+            textAnchor="middle"
+            className="fill-slate-500 text-[9px] font-semibold"
+          >
+            {targetLabel}
           </text>
         </svg>
       </div>

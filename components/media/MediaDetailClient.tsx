@@ -600,15 +600,35 @@ export default function MediaDetailClient({
 
           <Card className="rounded-[28px] border-white/70 bg-white/85">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="size-4 text-slate-500" />
-                スコア詳細
-              </CardTitle>
+              <div className="space-y-3">
+                <Badge className="w-fit bg-teal-100 text-teal-800">この案件での評価</Badge>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="size-4 text-slate-500" />
+                  {campaign.campaign_name} との相性スコア
+                </CardTitle>
+                <p className="text-xs leading-6 text-slate-500">
+                  下の六角形は「この案件」を基準に、読者一致・記事相性・接触導線・運営信頼・提携期待・表現安全で分解したものっぴ。
+                </p>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ScoreRadarChart media={mediaProfile} />
-              <div className="rounded-[24px] bg-slate-50 p-4 text-sm leading-7 text-slate-700">
-                {media.fit_reason}
+              <div className="rounded-[28px] border border-teal-100 bg-[linear-gradient(180deg,#f0fdfa,white)] p-4">
+                <div className="mb-4 rounded-[22px] bg-white/80 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
+                    対象案件
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-slate-950">
+                    {campaign.campaign_name}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">{campaign.category}</p>
+                </div>
+                <ScoreRadarChart media={mediaProfile} targetLabel="この案件" />
+              </div>
+              <div className="rounded-[24px] bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  AI評価コメント
+                </p>
+                <p className="mt-2 text-sm leading-7 text-slate-700">{media.fit_reason}</p>
               </div>
             </CardContent>
           </Card>
