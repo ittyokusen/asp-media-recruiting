@@ -290,11 +290,19 @@ export default function MediaDetailClient({
 
         <section className="surface-panel p-4 md:p-5">
           <Tabs defaultValue="email">
-            <TabsList className="mb-5 rounded-2xl bg-slate-100">
-              <TabsTrigger value="email">メール文面案 ({drafts.length})</TabsTrigger>
-              <TabsTrigger value="site">サイト要約</TabsTrigger>
-              <TabsTrigger value="history">送信履歴</TabsTrigger>
-            </TabsList>
+            <div className="mb-5 overflow-x-auto">
+              <TabsList className="min-w-max rounded-2xl bg-slate-100">
+                <TabsTrigger value="email" className="shrink-0">
+                  文面案 ({drafts.length})
+                </TabsTrigger>
+                <TabsTrigger value="site" className="shrink-0">
+                  サイト要約
+                </TabsTrigger>
+                <TabsTrigger value="history" className="shrink-0">
+                  送信履歴
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="email" className="space-y-4">
               <Card className="rounded-[24px] border-white/70 bg-white">
@@ -386,7 +394,8 @@ export default function MediaDetailClient({
                       </div>
                       <Textarea
                         defaultValue={draft.body}
-                        className="min-h-72 rounded-2xl bg-slate-50 font-mono text-sm"
+                        readOnly
+                        className="min-h-72 rounded-2xl bg-slate-50 font-mono text-sm text-slate-700"
                       />
                       <div className="mt-4 flex flex-wrap gap-3">
                         <Button

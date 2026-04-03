@@ -59,7 +59,7 @@ export default function LoginPage() {
             ASP メディア開拓ツール
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600 md:text-base">
-            案件管理、候補メディア収集、メール文面生成、送信管理までを一つの導線で扱う運用画面です。
+            案件管理、候補メディア収集、メール文面生成、連絡管理までを一つの導線で扱う運用画面です。
             ログイン後、権限に応じて編集機能も切り替わります。
           </p>
           <div className="mt-8 grid gap-3 md:grid-cols-2">

@@ -21,7 +21,7 @@ import type { Campaign, MediaCandidate } from '@/types'
 const navItems = [
   { href: '/campaigns', label: '案件管理', icon: BriefcaseBusiness },
   { href: '/media', label: 'メディア候補', icon: Search },
-  { href: '/outreach', label: '送信管理', icon: Mail },
+  { href: '/outreach', label: '連絡管理', icon: Mail },
 ]
 
 export default function Sidebar({ currentUser }: { currentUser: AuthUser | null }) {
@@ -99,14 +99,14 @@ export default function Sidebar({ currentUser }: { currentUser: AuthUser | null 
   return (
     <aside className="w-full border-b border-white/60 bg-[#fbfaf7]/90 backdrop-blur md:sticky md:top-0 md:h-screen md:w-72 md:border-r md:border-b-0">
       <div className="flex h-full flex-col">
-        <div className="border-b border-slate-200/80 px-5 py-5">
+        <div className="border-b border-slate-200/80 px-4 py-4 md:px-5 md:py-5">
           <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0f766e,#0f172a)] text-white shadow-lg shadow-teal-900/15">
+            <div className="flex size-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0f766e,#0f172a)] text-white shadow-lg shadow-teal-900/15 md:size-11">
               <LayoutDashboard className="size-5" />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">ASP Media Recruiting</p>
-              <p className="text-xs text-slate-500">営業準備から送信管理まで一元化</p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-900">ASP Media Recruiting</p>
+              <p className="hidden text-xs text-slate-500 sm:block">営業準備から連絡管理まで一元化</p>
             </div>
           </div>
           {currentUser ? (
@@ -120,7 +120,7 @@ export default function Sidebar({ currentUser }: { currentUser: AuthUser | null 
               <button
                 type="button"
                 onClick={() => void handleLogout()}
-                className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900"
+                className="inline-flex min-h-11 items-center gap-1 rounded-xl px-3 text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                 disabled={loggingOut}
               >
                 <LogOut className="size-3.5" />
@@ -130,7 +130,7 @@ export default function Sidebar({ currentUser }: { currentUser: AuthUser | null 
           ) : null}
         </div>
 
-        <div className="flex-1 px-4 py-4">
+        <div className="flex-1 px-3 py-3 md:px-4 md:py-4">
           <nav className="flex gap-2 overflow-x-auto pb-2 md:flex-col md:overflow-visible">
             {navItems.map((item) => {
               const Icon = item.icon
@@ -141,7 +141,7 @@ export default function Sidebar({ currentUser }: { currentUser: AuthUser | null 
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'group flex min-w-fit items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition-all md:min-w-0',
+                    'group flex min-w-[128px] items-center gap-2 rounded-2xl border px-3 py-2.5 text-sm transition-all sm:min-w-fit md:min-w-0 md:gap-3 md:px-4 md:py-3',
                     active
                       ? 'border-teal-200 bg-teal-950 text-white shadow-lg shadow-teal-950/15'
                       : 'border-slate-200 bg-white/85 text-slate-600 hover:border-teal-100 hover:bg-white hover:text-slate-900'
@@ -149,15 +149,20 @@ export default function Sidebar({ currentUser }: { currentUser: AuthUser | null 
                 >
                   <div
                     className={cn(
-                      'flex size-9 items-center justify-center rounded-xl',
+                      'flex size-8 items-center justify-center rounded-xl md:size-9',
                       active ? 'bg-white/12' : 'bg-slate-100 text-slate-700'
                     )}
                   >
                     <Icon className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{item.label}</p>
-                    <p className={cn('text-xs', active ? 'text-white/70' : 'text-slate-400')}>
+                    <p className="whitespace-nowrap font-medium">{item.label}</p>
+                    <p
+                      className={cn(
+                        'hidden text-xs md:block',
+                        active ? 'text-white/70' : 'text-slate-400'
+                      )}
+                    >
                       {item.href === '/campaigns'
                         ? '案件の訴求・配信条件を整理'
                         : item.href === '/media'
@@ -165,7 +170,12 @@ export default function Sidebar({ currentUser }: { currentUser: AuthUser | null 
                           : '送信待ち・返信状況を追跡'}
                     </p>
                   </div>
-                  <ChevronRight className={cn('size-4', active ? 'text-white/70' : 'text-slate-300')} />
+                  <ChevronRight
+                    className={cn(
+                      'hidden size-4 sm:block',
+                      active ? 'text-white/70' : 'text-slate-300'
+                    )}
+                  />
                 </Link>
               )
             })}

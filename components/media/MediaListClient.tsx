@@ -109,7 +109,7 @@ export default function MediaListClient({ initialCampaign }: { initialCampaign: 
           <div>
             <Badge className="mb-4 bg-slate-900 text-white">Media Prospecting</Badge>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-              候補メディアをスコアと接点情報で整理し、次に当たる先をすぐ決める
+              メディア候補
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
               案件別、ランク別、ステータス別の絞り込みをクライアントサイドで即時反映します。
@@ -331,21 +331,30 @@ export default function MediaListClient({ initialCampaign }: { initialCampaign: 
                 <Card key={media.id} className="rounded-[24px] border border-slate-200 bg-white/90 py-0 shadow-none">
                   <CardContent className="space-y-4 p-4">
                     <div className="flex items-start justify-between gap-3">
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-3">
                           <span
                             className={`inline-flex size-9 items-center justify-center rounded-full text-xs font-bold ${RANK_COLORS[media.priority_rank]}`}
                           >
                             {media.priority_rank}
                           </span>
-                          <div>
-                            <p className="font-semibold text-slate-950">{media.media_name}</p>
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-slate-950">{media.media_name}</p>
                             <p className="text-xs text-slate-500">{media.genre}</p>
                           </div>
                         </div>
                       </div>
                       <Badge className={STATUS_COLORS[media.status]}>{STATUS_LABELS[media.status]}</Badge>
                     </div>
+                    <a
+                      href={media.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex max-w-full items-center gap-1 text-xs text-teal-700 hover:underline"
+                    >
+                      <Globe className="size-3 shrink-0" />
+                      <span className="truncate">{media.domain}</span>
+                    </a>
                     <p className="text-sm leading-6 text-slate-600">{media.summary}</p>
                     <div className="grid grid-cols-2 gap-3 text-sm text-slate-600">
                       <InfoPair label="読者層" value={media.estimated_audience} />

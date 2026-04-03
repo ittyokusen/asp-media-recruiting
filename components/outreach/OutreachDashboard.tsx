@@ -17,6 +17,7 @@ import PermissionBanner from '@/components/PermissionBanner'
 import { useToast } from '@/components/ToastProvider'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -216,7 +217,7 @@ export default function OutreachDashboard({
           <div>
             <Badge className="mb-4 bg-emerald-100 text-emerald-800">Outreach Control</Badge>
             <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-              送信待ちから返信管理まで、営業の進行をひと目で追う
+              連絡管理
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
               送信前の最終確認、送信済みのフォローアップ、返信あり案件の温度感確認を
@@ -268,14 +269,66 @@ export default function OutreachDashboard({
 
       <section className="surface-panel p-4 md:p-5">
         <Tabs defaultValue="ready">
-          <TabsList className="mb-5 rounded-2xl bg-slate-100">
-            <TabsTrigger value="ready">送信待ち ({readyToSend.length})</TabsTrigger>
-            <TabsTrigger value="sent">送信済み ({sent.length})</TabsTrigger>
-            <TabsTrigger value="replied">返信あり ({replied.length})</TabsTrigger>
-            <TabsTrigger value="history">送信ログ ({logs.length})</TabsTrigger>
-          </TabsList>
+          <div className="mb-5 overflow-x-auto">
+            <TabsList className="min-w-max rounded-2xl bg-slate-100">
+              <TabsTrigger value="ready" className="shrink-0">
+                送信待ち ({readyToSend.length})
+              </TabsTrigger>
+              <TabsTrigger value="sent" className="shrink-0">
+                送信済み ({sent.length})
+              </TabsTrigger>
+              <TabsTrigger value="replied" className="shrink-0">
+                返信あり ({replied.length})
+              </TabsTrigger>
+              <TabsTrigger value="history" className="shrink-0">
+                送信ログ ({logs.length})
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="ready">
+            <div className="lg:hidden">
+              <MobileCardList emptyText="送信待ちのメディアはありません">
+                {readyToSend.map((media) => (
+                  <Card key={media.id} className="rounded-[24px] border border-slate-200 py-0 shadow-none">
+                    <CardContent className="space-y-4 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${RANK_COLORS[media.priority_rank]}`}
+                            >
+                              {media.priority_rank}
+                            </span>
+                            <p className="truncate font-semibold text-slate-900">{media.media_name}</p>
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">{media.domain}</p>
+                        </div>
+                        <Badge className="bg-emerald-100 text-emerald-700">確認済み</Badge>
+                      </div>
+                      <p className="text-sm text-slate-600">
+                        問い合わせ: {media.contact_email || 'フォームのみ'}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Link href={`/media/${media.id}`}>
+                          <Button variant="outline" className="h-11 w-full rounded-2xl">
+                            確認
+                          </Button>
+                        </Link>
+                        <Button
+                          className="h-11 w-full rounded-2xl"
+                          disabled={!canWrite || sendingId === media.id}
+                          onClick={() => void handleSend(media)}
+                        >
+                          {sendingId === media.id ? '送信中...' : '送信する'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </MobileCardList>
+            </div>
+
             <DataTable
               emptyText="送信待ちのメディアはありません"
               headers={['ランク', 'メディア名', '問い合わせ先', '文面ステータス', '']}
@@ -328,6 +381,63 @@ export default function OutreachDashboard({
           </TabsContent>
 
           <TabsContent value="sent">
+            <div className="lg:hidden">
+              <MobileCardList emptyText="送信済みのメディアはありません">
+                {sent.map((media) => {
+                  const log = logs.find((item) => item.media_candidate_id === media.id)
+
+                  return (
+                    <Card key={media.id} className="rounded-[24px] border border-slate-200 py-0 shadow-none">
+                      <CardContent className="space-y-4 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-slate-900">{media.media_name}</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {log ? new Date(log.sent_at).toLocaleDateString('ja-JP') : '送信日未記録'}
+                            </p>
+                          </div>
+                          <Badge className={STATUS_COLORS[media.status]}>
+                            {STATUS_LABELS[media.status]}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-slate-600">
+                          次のアクション: {log?.next_action || '—'}
+                        </p>
+                        {log ? (
+                          <Select
+                            value={log.reply_status}
+                            onValueChange={(value) =>
+                              void handleReplyStatusChange(log, value as ReplyStatus)
+                            }
+                            disabled={!canWrite || updatingLogId === log.id}
+                          >
+                            <SelectTrigger
+                              className="h-11 w-full rounded-2xl border-slate-200 bg-white"
+                              aria-label={`${media.media_name} の返信ステータス`}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(REPLY_STATUS_LABELS).map(([value, label]) => (
+                                <SelectItem key={value} value={value}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : null}
+                        <Link href={`/media/${media.id}`}>
+                          <Button variant="outline" className="h-11 w-full rounded-2xl">
+                            詳細を見る
+                          </Button>
+                        </Link>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </MobileCardList>
+            </div>
+
             <DataTable
               emptyText="送信済みのメディアはありません"
               headers={['メディア名', '送信日', '返信状況', '次のアクション', '']}
@@ -382,6 +492,38 @@ export default function OutreachDashboard({
           </TabsContent>
 
           <TabsContent value="replied">
+            <div className="lg:hidden">
+              <MobileCardList emptyText="返信のあるメディアはありません">
+                {replied.map((media) => {
+                  const log = logs.find((item) => item.media_candidate_id === media.id)
+
+                  return (
+                    <Card key={media.id} className="rounded-[24px] border border-slate-200 py-0 shadow-none">
+                      <CardContent className="space-y-4 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-slate-900">{media.media_name}</p>
+                            <p className="mt-1 text-xs text-slate-500">{media.domain}</p>
+                          </div>
+                          <Badge className={STATUS_COLORS[media.status]}>
+                            {STATUS_LABELS[media.status]}
+                          </Badge>
+                        </div>
+                        <p className="text-sm leading-6 text-slate-600">
+                          {log?.memo || log?.next_action || 'メモは未登録です'}
+                        </p>
+                        <Link href={`/media/${media.id}`}>
+                          <Button variant="outline" className="h-11 w-full rounded-2xl">
+                            詳細を見る
+                          </Button>
+                        </Link>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </MobileCardList>
+            </div>
+
             <DataTable
               emptyText="返信のあるメディアはありません"
               headers={['メディア名', 'ステータス', 'メモ', '']}
@@ -414,6 +556,38 @@ export default function OutreachDashboard({
           </TabsContent>
 
           <TabsContent value="history">
+            <div className="lg:hidden">
+              <MobileCardList emptyText="送信ログはありません">
+                {logs.map((log) => {
+                  const media = mediaById.get(log.media_candidate_id)
+
+                  return (
+                    <Card key={log.id} className="rounded-[24px] border border-slate-200 py-0 shadow-none">
+                      <CardContent className="space-y-3 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-slate-900">
+                              {media?.media_name || '—'}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {new Date(log.sent_at).toLocaleString('ja-JP')}
+                            </p>
+                          </div>
+                          <Badge className={REPLY_STATUS_COLORS[log.reply_status]}>
+                            {REPLY_STATUS_LABELS[log.reply_status]}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-slate-600">送信者: {log.sent_by}</p>
+                        <p className="text-sm leading-6 text-slate-600">
+                          {log.memo || log.next_action || 'メモは未登録です'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </MobileCardList>
+            </div>
+
             <DataTable
               emptyText="送信ログはありません"
               headers={['メディア名', '送信者', '送信日時', '配信状況', '返信', 'メモ']}
@@ -473,7 +647,7 @@ function DataTable({
   emptyText: string
 }) {
   return (
-    <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white">
+    <div className="hidden overflow-hidden rounded-[24px] border border-slate-200 bg-white lg:block">
       <Table>
         <TableHeader>
           <TableRow className="border-b border-slate-100 bg-slate-50/90">
@@ -499,4 +673,22 @@ function DataTable({
       </Table>
     </div>
   )
+}
+
+function MobileCardList({
+  children,
+  emptyText,
+}: {
+  children: ReactNode[]
+  emptyText: string
+}) {
+  if (children.length === 0) {
+    return (
+      <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-400">
+        {emptyText}
+      </div>
+    )
+  }
+
+  return <div className="space-y-3">{children}</div>
 }
