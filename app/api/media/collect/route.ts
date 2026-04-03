@@ -7,6 +7,8 @@ import {
   COLLECT_MIN_SITES,
 } from '@/lib/constants'
 import { scrapeSite, deduplicateDomains } from '@/lib/crawler/scraper'
+import { getMediaLearningProfile } from '@/lib/db'
+import { applyLearningToCandidateScore } from '@/lib/media-learning'
 import {
   buildAnalyzeMediaPrompt,
   buildExtractContactPrompt,
@@ -71,8 +73,9 @@ export async function POST(req: NextRequest) {
         // Step 1: 検索クエリ生成
         send('progress', { step: 'queries', message: '検索クエリを生成中...', percent: 5 })
 
+        const learningProfile = await getMediaLearningProfile(campaign)
         const { queries } = await callClaude<{ queries: string[]; intent: string }>(
-          buildSearchQueriesPrompt(campaign)
+          buildSearchQueriesPrompt(campaign, learningProfile)
         )
         send('progress', {
           step: 'queries',
@@ -131,7 +134,7 @@ export async function POST(req: NextRequest) {
                 fit_score: number
                 priority_rank: PriorityRank
                 operator_type_estimation: string
-              }>(buildAnalyzeMediaPrompt(scraped.bodyText, url, campaign)),
+              }>(buildAnalyzeMediaPrompt(scraped.bodyText, url, campaign, learningProfile)),
               callClaude<{
                 operator_name: string | null
                 contact_email: string | null
@@ -140,7 +143,7 @@ export async function POST(req: NextRequest) {
               }>(buildExtractContactPrompt(scraped.rawHtml, url)),
             ])
 
-            const candidate: MediaCandidate = {
+            const candidate = applyLearningToCandidateScore({
               id: `media_${Date.now()}_${i}`,
               campaign_id: campaign.id,
               media_name: analysis.media_name || scraped.title || url,
@@ -164,7 +167,7 @@ export async function POST(req: NextRequest) {
               status: 'unreviewed',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
-            }
+            }, learningProfile)
 
             results.push(candidate)
             send('candidate', candidate)

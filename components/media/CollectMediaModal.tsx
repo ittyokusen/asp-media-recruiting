@@ -233,7 +233,7 @@ export default function CollectMediaModal({
             <DialogTitle>メディア一括収集</DialogTitle>
             <DialogDescription>
               <span className="font-semibold text-slate-800">{campaign.campaign_name}</span>{' '}
-              に適したメディアを自動で探索・分析します
+              に適したメディアを自動で探索・分析します。過去の返信・提携履歴も学習シグナルとして、検索クエリとスコアを補正します。
             </DialogDescription>
           </DialogHeader>
 

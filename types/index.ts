@@ -106,3 +106,13 @@ export interface ManagedMedia {
   created_at: string
   updated_at: string
 }
+
+// ===== 学習プロファイル =====
+export interface MediaLearningProfile {
+  positive_domains: string[]
+  positive_genres: string[]
+  positive_operator_types: string[]
+  negative_domains: string[]
+  contact_routes: string[]
+  summary_hints: string[]
+}

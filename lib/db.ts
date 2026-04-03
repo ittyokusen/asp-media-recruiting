@@ -19,6 +19,7 @@ import {
   updateDemoMediaContact,
   updateDemoMediaStatus,
 } from '@/lib/demo-store'
+import { buildLearningProfile } from '@/lib/media-learning'
 import type {
   ApprovalStatus,
   Campaign,
@@ -26,6 +27,7 @@ import type {
   ManagedMedia,
   ManagedMediaStatus,
   MediaCandidate,
+  MediaLearningProfile,
   MediaStatus,
   OutreachDraft,
   OutreachLog,
@@ -650,4 +652,45 @@ export async function updateManagedMedia(id: string, input: UpdateManagedMediaIn
   if (error) throw error
 
   return normalizeManagedMedia(data as NullableManagedMediaRow)
+}
+
+function isRelatedLearningCampaign(targetCampaign: Campaign, sourceCampaign: Campaign) {
+  if (sourceCampaign.id === targetCampaign.id) return true
+  if (sourceCampaign.category === targetCampaign.category) return true
+
+  const targetTraits = new Set([
+    targetCampaign.category,
+    ...targetCampaign.preferred_media_traits,
+    ...targetCampaign.appeal_points,
+  ])
+
+  return [...sourceCampaign.preferred_media_traits, ...sourceCampaign.appeal_points].some((trait) =>
+    targetTraits.has(trait)
+  )
+}
+
+export async function getMediaLearningProfile(campaign: Campaign): Promise<MediaLearningProfile> {
+  const [campaigns, allMediaCandidates, allOutreachLogs, allManagedMedia] = await Promise.all([
+    getCampaigns(),
+    getMediaCandidates(),
+    getAllOutreachLogs(),
+    getManagedMedia(),
+  ])
+
+  const relatedCampaignIds = new Set(
+    campaigns
+      .filter((sourceCampaign) => isRelatedLearningCampaign(campaign, sourceCampaign))
+      .map((sourceCampaign) => sourceCampaign.id)
+  )
+
+  const mediaCandidates = allMediaCandidates.filter((media) =>
+    relatedCampaignIds.has(media.campaign_id)
+  )
+  const mediaIds = new Set(mediaCandidates.map((media) => media.id))
+  const outreachLogs = allOutreachLogs.filter((log) => mediaIds.has(log.media_candidate_id))
+  const managedMedia = allManagedMedia.filter((media) =>
+    relatedCampaignIds.has(media.campaign_id)
+  )
+
+  return buildLearningProfile(mediaCandidates, outreachLogs, managedMedia)
 }
