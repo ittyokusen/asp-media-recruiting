@@ -115,6 +115,7 @@ export default function MediaListClient({ initialCampaign }: { initialCampaign: 
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
               案件別、ランク別、ステータス別の絞り込みをクライアントサイドで即時反映します。
               初回の精査から送信待ち候補の洗い出しまで、一覧上で判断しやすくしました。
+              スコアは案件との相性を0〜100で細かく見た点数、ランクはS/A/B/Cで営業優先度を丸めた区分です。
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
@@ -252,11 +253,11 @@ export default function MediaListClient({ initialCampaign }: { initialCampaign: 
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-slate-200 bg-slate-50/90 hover:bg-slate-50/90">
-                  <TableHead className="w-16 text-center">ランク</TableHead>
+                  <TableHead className="w-24 text-center">ランク</TableHead>
                   <TableHead>メディア</TableHead>
                   <TableHead>ジャンル</TableHead>
                   <TableHead>読者層</TableHead>
-                  <TableHead className="text-right">スコア</TableHead>
+                  <TableHead className="text-right">相性スコア</TableHead>
                   <TableHead>問い合わせ</TableHead>
                   <TableHead>ステータス</TableHead>
                   <TableHead className="w-28" />
@@ -273,11 +274,14 @@ export default function MediaListClient({ initialCampaign }: { initialCampaign: 
                   filteredCandidates.map((media) => (
                     <TableRow key={media.id} className="border-b border-slate-100 hover:bg-slate-50/70">
                       <TableCell className="text-center">
-                        <span
-                          className={`inline-flex size-9 items-center justify-center rounded-full text-xs font-bold ${RANK_COLORS[media.priority_rank]}`}
-                        >
-                          {media.priority_rank}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span
+                            className={`inline-flex size-9 items-center justify-center rounded-full text-xs font-bold ${RANK_COLORS[media.priority_rank]}`}
+                          >
+                            {media.priority_rank}
+                          </span>
+                          <span className="text-[10px] text-slate-400">優先度</span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div>
@@ -359,7 +363,8 @@ export default function MediaListClient({ initialCampaign }: { initialCampaign: 
                     <p className="text-sm leading-6 text-slate-600">{media.summary}</p>
                     <div className="grid grid-cols-2 gap-3 text-sm text-slate-600">
                       <InfoPair label="読者層" value={media.estimated_audience} />
-                      <InfoPair label="スコア" value={`${media.fit_score} / 100`} />
+                      <InfoPair label="相性スコア" value={`${media.fit_score} / 100`} />
+                      <InfoPair label="ランク" value={`${media.priority_rank}（営業優先度）`} />
                       <InfoPair label="運営者" value={media.operator_name} />
                       <InfoPair
                         label="問い合わせ"

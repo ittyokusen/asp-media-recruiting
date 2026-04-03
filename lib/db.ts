@@ -109,6 +109,7 @@ export type CreateCampaignInput = Pick<
   Campaign,
   | 'campaign_name'
   | 'category'
+  | 'lp_url'
   | 'appeal_points'
   | 'ng_expressions'
   | 'preferred_media_traits'
@@ -182,6 +183,7 @@ export type UpdateManagedMediaInput = Partial<
 function normalizeCampaign(campaign: Campaign): Campaign {
   return {
     ...campaign,
+    lp_url: campaign.lp_url ?? '',
     appeal_points: campaign.appeal_points ?? [],
     ng_expressions: campaign.ng_expressions ?? [],
     preferred_media_traits: campaign.preferred_media_traits ?? [],

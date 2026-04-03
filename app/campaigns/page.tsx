@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { CircleAlert, Loader2, Plus, Sparkles, Target, TrendingUp } from 'lucide-react'
+import {
+  CircleAlert,
+  ExternalLink,
+  Loader2,
+  Plus,
+  Sparkles,
+  Target,
+  TrendingUp,
+} from 'lucide-react'
 
 import { useAuth } from '@/components/AuthProvider'
 import CollectMediaModal from '@/components/media/CollectMediaModal'
@@ -28,6 +36,7 @@ import type { Campaign, MediaCandidate } from '@/types'
 type CampaignFormState = {
   campaign_name: string
   category: string
+  lp_url: string
   appeal_points: string
   ng_expressions: string
   preferred_media_traits: string
@@ -37,6 +46,7 @@ type CampaignFormState = {
 const initialForm: CampaignFormState = {
   campaign_name: '',
   category: '',
+  lp_url: '',
   appeal_points: '',
   ng_expressions: '',
   preferred_media_traits: '',
@@ -117,6 +127,7 @@ export default function CampaignsPage() {
         body: JSON.stringify({
           campaign_name: form.campaign_name.trim(),
           category: form.category.trim(),
+          lp_url: form.lp_url.trim(),
           appeal_points: toList(form.appeal_points),
           ng_expressions: toList(form.ng_expressions),
           preferred_media_traits: toList(form.preferred_media_traits),
@@ -202,6 +213,18 @@ export default function CampaignsPage() {
                             setForm((current) => ({ ...current, category: event.target.value }))
                           }
                           placeholder="例: 健康食品・血糖値・血圧"
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="lp_url">LP URL</Label>
+                        <Input
+                          id="lp_url"
+                          value={form.lp_url}
+                          onChange={(event) =>
+                            setForm((current) => ({ ...current, lp_url: event.target.value }))
+                          }
+                          placeholder="例: https://example.com/lp"
+                          inputMode="url"
                         />
                       </div>
                       <FormTextarea
@@ -326,6 +349,19 @@ export default function CampaignsPage() {
                         候補メディア {matchedMedia} 件 / 更新日{' '}
                         {new Date(campaign.updated_at).toLocaleDateString('ja-JP')}
                       </p>
+                      {campaign.lp_url ? (
+                        <a
+                          href={campaign.lp_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex max-w-full items-center gap-1 text-sm text-teal-700 hover:underline"
+                        >
+                          <ExternalLink className="size-3.5 shrink-0" />
+                          <span className="truncate">{campaign.lp_url}</span>
+                        </a>
+                      ) : (
+                        <p className="mt-2 text-xs text-slate-400">LP URL未登録</p>
+                      )}
                     </div>
                     <Badge className="bg-slate-900 text-white">アクティブ</Badge>
                   </div>

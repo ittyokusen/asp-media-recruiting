@@ -7,6 +7,7 @@ import { createCampaign, getCampaigns } from '@/lib/db'
 const campaignCreateSchema = z.object({
   campaign_name: z.string().trim().min(1),
   category: z.string().trim().min(1),
+  lp_url: z.string().trim().url().or(z.literal('')).optional(),
   appeal_points: z.array(z.string()).optional(),
   ng_expressions: z.array(z.string()).optional(),
   preferred_media_traits: z.array(z.string()).optional(),
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
     const campaign = await createCampaign({
       campaign_name: parsed.data.campaign_name,
       category: parsed.data.category,
+      lp_url: parsed.data.lp_url ?? '',
       appeal_points: parsed.data.appeal_points ?? [],
       ng_expressions: parsed.data.ng_expressions ?? [],
       preferred_media_traits: parsed.data.preferred_media_traits ?? [],

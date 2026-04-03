@@ -3,6 +3,7 @@ export interface Campaign {
   id: string
   campaign_name: string
   category: string
+  lp_url: string
   appeal_points: string[]
   ng_expressions: string[]
   preferred_media_traits: string[]

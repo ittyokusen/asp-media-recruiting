@@ -7,6 +7,7 @@ create table campaigns (
   id uuid primary key default gen_random_uuid(),
   campaign_name text not null,
   category text not null,
+  lp_url text not null default '',
   appeal_points text[] default '{}',
   ng_expressions text[] default '{}',
   preferred_media_traits text[] default '{}',

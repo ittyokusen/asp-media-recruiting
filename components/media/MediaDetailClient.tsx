@@ -398,11 +398,16 @@ export default function MediaDetailClient({
 
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex items-start gap-4">
-              <span
-                className={`inline-flex size-14 items-center justify-center rounded-full text-lg font-bold ${RANK_COLORS[media.priority_rank]}`}
-              >
-                {media.priority_rank}
-              </span>
+              <div className="flex flex-col items-center gap-1">
+                <span
+                  className={`inline-flex size-14 items-center justify-center rounded-full text-lg font-bold ${RANK_COLORS[media.priority_rank]}`}
+                >
+                  {media.priority_rank}
+                </span>
+                <span className="text-[10px] font-semibold tracking-[0.18em] text-slate-400">
+                  営業優先度
+                </span>
+              </div>
               <div>
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <Badge className={STATUS_COLORS[mediaStatus]}>{STATUS_LABELS[mediaStatus]}</Badge>
@@ -432,7 +437,7 @@ export default function MediaDetailClient({
                 label={`${campaign.campaign_name} での適合スコア`}
                 value={`${media.fit_score}`}
                 subLabel="/ 100"
-                description={`この点数は「${campaign.campaign_name}」を基準に算出しています。${media.fit_reason}`}
+                description={`スコアは「${campaign.campaign_name}」との相性を0〜100で細かく見た点数、左のランクは営業優先度をS/A/B/Cに丸めた区分です。${media.fit_reason}`}
               />
               <MetricCard
                 label="問い合わせ導線"
