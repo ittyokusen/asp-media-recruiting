@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { requireWriteUser } from '@/lib/auth'
-import { createManagedMedia, getManagedMedia } from '@/lib/db'
+import { createManagedMedia, getManagedMedia, updateMediaStatus } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,6 +48,10 @@ export async function POST(request: NextRequest) {
       monthly_volume: body.monthly_volume ?? '',
       memo: body.memo ?? '',
     })
+
+    if (body.source_media_candidate_id) {
+      await updateMediaStatus(body.source_media_candidate_id, 'partnered')
+    }
 
     return NextResponse.json(saved, { status: 201 })
   } catch (error) {

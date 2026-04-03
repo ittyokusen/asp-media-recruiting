@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import MediaDetailClient from '@/components/media/MediaDetailClient'
 import {
   getCampaignById,
+  getCampaigns,
   getMediaCandidateById,
   getOutreachDrafts,
   getOutreachLogs,
@@ -20,8 +21,9 @@ export default async function MediaDetailPage({
     notFound()
   }
 
-  const [campaign, drafts, history] = await Promise.all([
+  const [campaign, campaigns, drafts, history] = await Promise.all([
     getCampaignById(media.campaign_id),
+    getCampaigns(),
     getOutreachDrafts(media.id),
     getOutreachLogs(media.id),
   ])
@@ -34,6 +36,7 @@ export default async function MediaDetailPage({
     <MediaDetailClient
       media={media}
       campaign={campaign}
+      campaigns={campaigns}
       initialDrafts={drafts}
       initialHistory={history}
     />

@@ -2,7 +2,9 @@
 
 import { useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
+  ArrowRight,
   ExternalLink,
   Globe,
   Hash,
@@ -22,10 +24,20 @@ import PermissionBanner from '@/components/PermissionBanner'
 import ScoreRadarChart from '@/components/media/ScoreRadarChart'
 import { useToast } from '@/components/ToastProvider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { getCampaignRecommendations } from '@/lib/campaign-recommendations'
 import { RANK_COLORS, STATUS_COLORS, STATUS_LABELS } from '@/lib/constants'
 import type { Campaign, MediaCandidate, OutreachDraft, OutreachLog } from '@/types'
 
@@ -34,17 +46,31 @@ type SendLogResponse = {
   media: MediaCandidate
 }
 
+type ManagedMediaFormState = {
+  product_name: string
+  placement_type: string
+  start_date: string
+  end_date: string
+  unit_price: string
+  reward_rule: string
+  monthly_volume: string
+  memo: string
+}
+
 export default function MediaDetailClient({
   media,
   campaign,
+  campaigns,
   initialDrafts,
   initialHistory,
 }: {
   media: MediaCandidate
   campaign: Campaign
+  campaigns: Campaign[]
   initialDrafts: OutreachDraft[]
   initialHistory: OutreachLog[]
 }) {
+  const router = useRouter()
   const { canWrite, user } = useAuth()
   const { showToast } = useToast()
   const [drafts, setDrafts] = useState(initialDrafts)
@@ -56,8 +82,21 @@ export default function MediaDetailClient({
   const [generating, setGenerating] = useState(false)
   const [sendingDraftId, setSendingDraftId] = useState<string | null>(null)
   const [updatingContact, setUpdatingContact] = useState(false)
+  const [managedDialogOpen, setManagedDialogOpen] = useState(false)
+  const [registeringManagedMedia, setRegisteringManagedMedia] = useState(false)
+  const [managedForm, setManagedForm] = useState<ManagedMediaFormState>({
+    product_name: campaign.campaign_name,
+    placement_type: media.genre,
+    start_date: new Date().toISOString().slice(0, 10),
+    end_date: '',
+    unit_price: '',
+    reward_rule: '',
+    monthly_volume: media.estimated_audience,
+    memo: media.fit_reason,
+  })
   const [error, setError] = useState<string | null>(null)
   const businessCardInputRef = useRef<HTMLInputElement | null>(null)
+  const recommendedCampaigns = getCampaignRecommendations(mediaProfile, campaigns)
 
   const contactMethodLabel = mediaProfile.contact_email
     ? 'Email'
@@ -285,6 +324,66 @@ export default function MediaDetailClient({
     }
   }
 
+  const handleRegisterManagedMedia = async () => {
+    if (!managedForm.product_name.trim()) {
+      setError('実施商材は必須です')
+      return
+    }
+
+    setRegisteringManagedMedia(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/managed-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source_media_candidate_id: mediaProfile.id,
+          campaign_id: campaign.id,
+          media_name: mediaProfile.media_name,
+          domain: mediaProfile.domain,
+          url: mediaProfile.url,
+          product_name: managedForm.product_name,
+          placement_type: managedForm.placement_type,
+          contract_status: 'negotiating',
+          start_date: managedForm.start_date,
+          end_date: managedForm.end_date,
+          unit_price: managedForm.unit_price,
+          reward_rule: managedForm.reward_rule,
+          owner_name: mediaProfile.assigned_owner || user?.email || '',
+          monthly_volume: managedForm.monthly_volume,
+          memo: managedForm.memo,
+        }),
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(payload?.error ?? 'メディア管理への登録に失敗しました')
+      }
+
+      setMediaStatus('partnered')
+      setMediaProfile((current) => ({ ...current, status: 'partnered' }))
+      setManagedDialogOpen(false)
+      showToast({
+        tone: 'success',
+        title: 'メディア管理へ登録しました',
+        description: '成約後の実施条件をメディア管理に引き継ぎました。',
+      })
+      router.push('/managed-media')
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : 'メディア管理への登録に失敗しました'
+      setError(message)
+      showToast({
+        tone: 'error',
+        title: 'メディア管理への登録に失敗しました',
+        description: message,
+      })
+    } finally {
+      setRegisteringManagedMedia(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="surface-panel overflow-hidden">
@@ -382,6 +481,120 @@ export default function MediaDetailClient({
               >
                 自分を担当にする
               </Button>
+              <Dialog open={managedDialogOpen} onOpenChange={setManagedDialogOpen}>
+                <DialogTrigger
+                  render={
+                    <Button
+                      type="button"
+                      className="h-11 rounded-2xl"
+                      disabled={!canWrite || registeringManagedMedia}
+                    />
+                  }
+                >
+                  メディア管理へ登録
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl rounded-[28px] p-0 sm:max-w-2xl">
+                  <div className="p-6">
+                    <DialogHeader>
+                      <DialogTitle>メディア管理へ登録</DialogTitle>
+                      <DialogDescription>
+                        この候補メディアを成約後の管理台帳へ移し、実施商材や掲載条件を記録します。
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="mt-6 grid gap-4 md:grid-cols-2">
+                      <ManagedFormField
+                        label="実施商材"
+                        value={managedForm.product_name}
+                        onChange={(value) =>
+                          setManagedForm((current) => ({ ...current, product_name: value }))
+                        }
+                      />
+                      <ManagedFormField
+                        label="掲載メニュー"
+                        value={managedForm.placement_type}
+                        onChange={(value) =>
+                          setManagedForm((current) => ({ ...current, placement_type: value }))
+                        }
+                        placeholder="例: 比較記事 / バナー / メルマガ"
+                      />
+                      <ManagedFormField
+                        label="開始日"
+                        value={managedForm.start_date}
+                        type="date"
+                        onChange={(value) =>
+                          setManagedForm((current) => ({ ...current, start_date: value }))
+                        }
+                      />
+                      <ManagedFormField
+                        label="終了日"
+                        value={managedForm.end_date}
+                        type="date"
+                        onChange={(value) =>
+                          setManagedForm((current) => ({ ...current, end_date: value }))
+                        }
+                      />
+                      <ManagedFormField
+                        label="単価"
+                        value={managedForm.unit_price}
+                        onChange={(value) =>
+                          setManagedForm((current) => ({ ...current, unit_price: value }))
+                        }
+                        placeholder="例: CPA 4,800円"
+                      />
+                      <ManagedFormField
+                        label="報酬条件"
+                        value={managedForm.reward_rule}
+                        onChange={(value) =>
+                          setManagedForm((current) => ({ ...current, reward_rule: value }))
+                        }
+                        placeholder="例: 月末締め翌月末支払い"
+                      />
+                      <ManagedFormField
+                        label="想定ボリューム"
+                        value={managedForm.monthly_volume}
+                        onChange={(value) =>
+                          setManagedForm((current) => ({ ...current, monthly_volume: value }))
+                        }
+                      />
+                      <div className="md:col-span-2">
+                        <Label>運用メモ</Label>
+                        <Textarea
+                          value={managedForm.memo}
+                          onChange={(event) =>
+                            setManagedForm((current) => ({ ...current, memo: event.target.value }))
+                          }
+                          className="mt-2 min-h-24 rounded-2xl border-slate-200 bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter className="rounded-b-[28px] bg-slate-50/90">
+                    <Button
+                      variant="outline"
+                      className="rounded-2xl"
+                      onClick={() => setManagedDialogOpen(false)}
+                      disabled={registeringManagedMedia}
+                    >
+                      キャンセル
+                    </Button>
+                    <Button
+                      className="rounded-2xl"
+                      onClick={() => void handleRegisterManagedMedia()}
+                      disabled={!canWrite || registeringManagedMedia}
+                    >
+                      {registeringManagedMedia ? (
+                        <>
+                          <Loader2 className="size-4 animate-spin" />
+                          登録中...
+                        </>
+                      ) : (
+                        '登録してメディア管理へ'
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
 
@@ -483,6 +696,9 @@ export default function MediaDetailClient({
                 </TabsTrigger>
                 <TabsTrigger value="site" className="shrink-0">
                   サイト要約
+                </TabsTrigger>
+                <TabsTrigger value="campaigns" className="shrink-0">
+                  おすすめ案件
                 </TabsTrigger>
                 <TabsTrigger value="history" className="shrink-0">
                   送信履歴
@@ -677,6 +893,70 @@ export default function MediaDetailClient({
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <TabsContent value="campaigns" className="space-y-4">
+              <Card className="rounded-[24px] border-white/70 bg-white">
+                <CardHeader>
+                  <CardTitle className="text-lg">このメディアにおすすめの案件</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm leading-7 text-slate-600">
+                    媒体ジャンル、読者層、記事傾向、問い合わせ導線をもとに、
+                    このメディアへ当てやすい案件をスコア順で並べていますっぴ。
+                  </p>
+                  {recommendedCampaigns.map((item, index) => (
+                    <div
+                      key={item.campaign.id}
+                      className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4"
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge className={RANK_COLORS[item.rank]}>#{index + 1} {item.rank}</Badge>
+                            {item.campaign.id === campaign.id ? (
+                              <Badge variant="outline" className="border-teal-200 bg-white text-teal-700">
+                                現在の案件
+                              </Badge>
+                            ) : null}
+                            <span className="text-xs text-slate-500">{item.campaign.category}</span>
+                          </div>
+                          <h3 className="mt-3 truncate text-lg font-semibold text-slate-950">
+                            {item.campaign.campaign_name}
+                          </h3>
+                        </div>
+                        <div className="rounded-3xl bg-white px-4 py-3 text-center shadow-sm">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                            Match
+                          </p>
+                          <p className="mt-1 text-3xl font-semibold text-slate-950">{item.score}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-2">
+                        {item.reasons.map((reason) => (
+                          <p
+                            key={reason}
+                            className="flex gap-2 rounded-2xl bg-white px-3 py-2 text-sm leading-6 text-slate-700"
+                          >
+                            <Sparkles className="mt-1 size-3.5 shrink-0 text-teal-700" />
+                            <span>{reason}</span>
+                          </p>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Link href={`/media?campaign=${item.campaign.id}`}>
+                          <Button variant="outline" className="rounded-2xl">
+                            この案件の候補一覧へ
+                            <ArrowRight className="size-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </section>
       </div>
@@ -743,6 +1023,33 @@ function InfoPanel({ title, value }: { title: string; value: string }) {
     <div className="rounded-[22px] bg-slate-50 p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{title}</p>
       <p className="mt-2 text-sm font-medium text-slate-700">{value}</p>
+    </div>
+  )
+}
+
+function ManagedFormField({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  type?: string
+  placeholder?: string
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-11 rounded-2xl border-slate-200 bg-white"
+      />
     </div>
   )
 }
