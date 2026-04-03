@@ -1,10 +1,11 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   CircleAlert,
+  IdCard,
   Loader2,
   MailCheck,
   MessageCircleReply,
@@ -35,7 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { RANK_COLORS, STATUS_COLORS, STATUS_LABELS } from '@/lib/constants'
-import type { MediaCandidate, OutreachLog, ReplyStatus } from '@/types'
+import type { Campaign, MediaCandidate, OutreachLog, ReplyStatus } from '@/types'
 
 const REPLY_STATUS_LABELS = {
   none: '未返信',
@@ -62,19 +63,25 @@ type UpdateResponse = {
 }
 
 export default function OutreachDashboard({
+  initialCampaigns,
   initialMediaCandidates,
   initialLogs,
 }: {
+  initialCampaigns: Campaign[]
   initialMediaCandidates: MediaCandidate[]
   initialLogs: OutreachLog[]
 }) {
   const { user, canWrite } = useAuth()
   const { showToast } = useToast()
+  const businessCardInputRef = useRef<HTMLInputElement | null>(null)
+  const [campaigns] = useState(initialCampaigns)
   const [mediaCandidates, setMediaCandidates] = useState(initialMediaCandidates)
   const [logs, setLogs] = useState(initialLogs)
   const [pageError, setPageError] = useState<string | null>(null)
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [updatingLogId, setUpdatingLogId] = useState<string | null>(null)
+  const [importCampaignId, setImportCampaignId] = useState(initialCampaigns[0]?.id ?? '')
+  const [importingBusinessCard, setImportingBusinessCard] = useState(false)
 
   const { readyToSend, sent, replied, mediaById } = useMemo(() => {
     const sortedMedia = [...mediaCandidates].sort((a, b) => b.updated_at.localeCompare(a.updated_at))
@@ -91,7 +98,9 @@ export default function OutreachDashboard({
 
   const upsertMedia = (nextMedia: MediaCandidate) => {
     setMediaCandidates((current) =>
-      current.map((media) => (media.id === nextMedia.id ? nextMedia : media))
+      current.some((media) => media.id === nextMedia.id)
+        ? current.map((media) => (media.id === nextMedia.id ? nextMedia : media))
+        : [nextMedia, ...current]
     )
   }
 
@@ -104,6 +113,117 @@ export default function OutreachDashboard({
 
       return next.sort((a, b) => b.sent_at.localeCompare(a.sent_at))
     })
+  }
+
+  const handleBusinessCardImport = async (file?: File) => {
+    if (!file) return
+
+    if (!importCampaignId) {
+      setPageError('先に紐づける案件を選んでください')
+      return
+    }
+
+    setImportingBusinessCard(true)
+    setPageError(null)
+
+    try {
+      const selectedCampaign = campaigns.find((campaign) => campaign.id === importCampaignId)
+      if (!selectedCampaign) {
+        throw new Error('紐づける案件が見つかりません')
+      }
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const ocrResponse = await fetch('/api/ai/business-card', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!ocrResponse.ok) {
+        const payload = (await ocrResponse.json().catch(() => null)) as { error?: string } | null
+        throw new Error(payload?.error ?? '名刺の読み取りに失敗しました')
+      }
+
+      const extracted = (await ocrResponse.json()) as {
+        operator_name: string
+        contact_email: string
+        contact_slack_id: string
+        contact_chatwork_id: string
+        contact_page_url: string
+        memo: string
+      }
+
+      const domain =
+        extracted.contact_email.split('@')[1] ||
+        extracted.contact_page_url.replace(/^https?:\/\//, '').split('/')[0] ||
+        'business-card.local'
+
+      const mediaPayload = {
+        campaign_id: selectedCampaign.id,
+        media_name: extracted.operator_name
+          ? `${extracted.operator_name}さんの名刺リード`
+          : `${selectedCampaign.campaign_name} 名刺交換リード`,
+        domain,
+        url: extracted.contact_page_url || `https://${domain}`,
+        genre: '名刺交換リード',
+        estimated_audience: `${selectedCampaign.category} と接点あり`,
+        operator_name: extracted.operator_name || '名刺交換先',
+        operator_type: '名刺交換先',
+        contact_page_url: extracted.contact_page_url,
+        contact_email: extracted.contact_email,
+        contact_slack_id: extracted.contact_slack_id,
+        contact_chatwork_id: extracted.contact_chatwork_id,
+        assigned_owner: user?.email || '',
+        social_links: [],
+        summary:
+          extracted.memo ||
+          `名刺交換から登録した連絡先です。${selectedCampaign.campaign_name} の個別アプローチ候補として管理します。`,
+        fit_score: 70,
+        priority_rank: 'B',
+        fit_reason: `名刺交換で直接接点があるため、${selectedCampaign.campaign_name} の個別連絡候補として初期登録しました。`,
+        status:
+          extracted.contact_email ||
+          extracted.contact_slack_id ||
+          extracted.contact_chatwork_id ||
+          extracted.contact_page_url
+            ? 'ready_to_send'
+            : 'unreviewed',
+      }
+
+      const createResponse = await fetch('/api/media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mediaPayload),
+      })
+
+      if (!createResponse.ok) {
+        const payload = (await createResponse.json().catch(() => null)) as { error?: string } | null
+        throw new Error(payload?.error ?? '名刺リードの保存に失敗しました')
+      }
+
+      const savedMedia = (await createResponse.json()) as MediaCandidate[]
+      savedMedia.forEach((media) => upsertMedia(media))
+
+      showToast({
+        tone: 'success',
+        title: '名刺リードを登録しました',
+        description: `${savedMedia[0]?.media_name ?? '新しい候補'} を連絡管理に追加しました。`,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '名刺リードの登録に失敗しました'
+      setPageError(message)
+      showToast({
+        tone: 'error',
+        title: '名刺リードの登録に失敗しました',
+        description: message,
+      })
+    } finally {
+      if (businessCardInputRef.current) {
+        businessCardInputRef.current.value = ''
+      }
+      setImportingBusinessCard(false)
+    }
   }
 
   const handleSend = async (media: MediaCandidate) => {
@@ -271,6 +391,67 @@ export default function OutreachDashboard({
       {!canWrite ? (
         <PermissionBanner description="viewer 権限では送信や返信更新はできません。進行確認のみ可能です。" />
       ) : null}
+
+      <section className="surface-panel p-4 md:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
+              Business Card Intake
+            </Badge>
+            <h2 className="mt-3 text-xl font-semibold text-slate-950">名刺から連絡先を登録</h2>
+            <p className="mt-2 text-sm leading-7 text-slate-600">
+              名刺交換から始まる商談でも、画像をアップするだけで連絡先を読み取り、
+              紐づけた案件のメディア候補として登録できます。
+            </p>
+          </div>
+
+          <div className="grid w-full gap-3 lg:w-[420px] lg:grid-cols-[1fr_auto]">
+            <Select
+              value={importCampaignId}
+              onValueChange={(value) => setImportCampaignId(value ?? '')}
+              disabled={!canWrite || campaigns.length === 0}
+            >
+              <SelectTrigger className="h-11 rounded-2xl border-slate-200 bg-white px-4">
+                <SelectValue placeholder="紐づける案件を選択" />
+              </SelectTrigger>
+              <SelectContent>
+                {campaigns.map((campaign) => (
+                  <SelectItem key={campaign.id} value={campaign.id}>
+                    {campaign.campaign_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <input
+              ref={businessCardInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => void handleBusinessCardImport(event.target.files?.[0])}
+            />
+
+            <Button
+              type="button"
+              className="h-11 rounded-2xl"
+              disabled={!canWrite || !importCampaignId || importingBusinessCard}
+              onClick={() => businessCardInputRef.current?.click()}
+            >
+              {importingBusinessCard ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  読み取り中...
+                </>
+              ) : (
+                <>
+                  <IdCard className="size-4" />
+                  名刺を取り込む
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {pageError ? (
         <div className="flex items-start gap-3 rounded-[22px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">

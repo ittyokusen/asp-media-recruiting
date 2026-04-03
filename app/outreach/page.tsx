@@ -1,8 +1,18 @@
 import OutreachDashboard from '@/components/outreach/OutreachDashboard'
-import { getAllOutreachLogs, getMediaCandidates } from '@/lib/db'
+import { getAllOutreachLogs, getCampaigns, getMediaCandidates } from '@/lib/db'
 
 export default async function OutreachPage() {
-  const [mediaCandidates, logs] = await Promise.all([getMediaCandidates(), getAllOutreachLogs()])
+  const [campaigns, mediaCandidates, logs] = await Promise.all([
+    getCampaigns(),
+    getMediaCandidates(),
+    getAllOutreachLogs(),
+  ])
 
-  return <OutreachDashboard initialMediaCandidates={mediaCandidates} initialLogs={logs} />
+  return (
+    <OutreachDashboard
+      initialCampaigns={campaigns}
+      initialMediaCandidates={mediaCandidates}
+      initialLogs={logs}
+    />
+  )
 }
