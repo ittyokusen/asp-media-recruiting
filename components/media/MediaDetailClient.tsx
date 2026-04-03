@@ -429,10 +429,10 @@ export default function MediaDetailClient({
 
             <div className="grid gap-3 sm:grid-cols-3 lg:w-[360px] lg:grid-cols-1">
               <MetricCard
-                label="適合スコア"
+                label={`${campaign.campaign_name} での適合スコア`}
                 value={`${media.fit_score}`}
                 subLabel="/ 100"
-                description={media.fit_reason}
+                description={`この点数は「${campaign.campaign_name}」を基準に算出しています。${media.fit_reason}`}
               />
               <MetricCard
                 label="問い合わせ導線"
