@@ -158,7 +158,7 @@ export default function CampaignsPage() {
           <div>
             <Badge className="mb-4 bg-teal-100 text-teal-800">Campaign Workspace</Badge>
             <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-slate-950 md:text-4xl">
-              案件の訴求整理から、メディア探索の起点づくりまで一画面で進める
+              案件管理
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">
               訴求ポイント、NG 表現、相性のよいメディア像を案件ごとに整理しておくことで、
