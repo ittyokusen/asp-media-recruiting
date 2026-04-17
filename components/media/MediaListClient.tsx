@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Filter, Globe, Loader2, Mail, Search, SlidersHorizontal } from 'lucide-react'
 
 import PermissionBanner from '@/components/PermissionBanner'
+import ImportMediaJsonDialog from '@/components/media/ImportMediaJsonDialog'
 import ScoreRadarChart from '@/components/media/ScoreRadarChart'
 import { useAuth } from '@/components/AuthProvider'
 import { Badge } from '@/components/ui/badge'
@@ -41,6 +42,23 @@ export default function MediaListClient({ initialCampaign }: { initialCampaign: 
   const [selectedCampaign, setSelectedCampaign] = useState(initialCampaign)
   const [selectedRank, setSelectedRank] = useState<(typeof rankOptions)[number]>('all')
   const [selectedStatus, setSelectedStatus] = useState<'all' | keyof typeof STATUS_LABELS>('all')
+
+  const mergeImportedCandidates = (savedCandidates: MediaCandidate[]) => {
+    setMediaCandidates((current) => {
+      const next = [...current]
+
+      savedCandidates.forEach((candidate) => {
+        const index = next.findIndex((currentCandidate) => currentCandidate.id === candidate.id)
+        if (index >= 0) {
+          next[index] = candidate
+        } else {
+          next.unshift(candidate)
+        }
+      })
+
+      return next
+    })
+  }
 
   const loadData = async () => {
     setLoading(true)
@@ -225,18 +243,23 @@ export default function MediaListClient({ initialCampaign }: { initialCampaign: 
               送信待ち {readyCount}件
             </Badge>
           </div>
-          <Button
-            variant="outline"
-            className="rounded-2xl"
-            onClick={() => {
-              setKeyword('')
-              setSelectedCampaign('all')
-              setSelectedRank('all')
-              setSelectedStatus('all')
-            }}
-          >
-            条件をリセット
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {canWrite ? (
+              <ImportMediaJsonDialog campaigns={campaigns} onImported={mergeImportedCandidates} />
+            ) : null}
+            <Button
+              variant="outline"
+              className="rounded-2xl"
+              onClick={() => {
+                setKeyword('')
+                setSelectedCampaign('all')
+                setSelectedRank('all')
+                setSelectedStatus('all')
+              }}
+            >
+              条件をリセット
+            </Button>
+          </div>
         </div>
       </section>
 
